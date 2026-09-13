@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: #17100a;
+  --color-surface: #221810;
+  --color-surface-2: #2c1f14;
+  --color-track: #332518;
+  --color-line: #3a2a1a;
+  --color-fg: #f5ede4;
+  --color-muted: #a89884;
+  --color-faint: #7a6c5a;
+  --color-accent: #ff6b1a;
+  --color-accent-soft: #ff8a3d;
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-bg);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  text-rendering: geometricPrecision;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.tnum {
+  font-feature-settings: "tnum" 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.glow-ring {
+  filter: drop-shadow(0 0 14px rgb(255 107 26 / 0.28));
+}
+
+.glow-text {
+  text-shadow: 0 0 22px rgb(255 107 26 / 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

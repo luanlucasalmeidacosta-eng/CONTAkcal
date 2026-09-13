@@ -79,7 +79,9 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
       globalWeekIndex: 1,
       phaseWeekIndex: 1,
     },
-    phaseHistory: [{ phase: input.phase, startedAt: now }],
+    phaseHistory: [
+      { phase: input.phase, startedAt: now, adjustmentKcal: input.adjustmentKcal, recompIntent: input.recompIntent ?? null },
+    ],
   };
 
   await setDoc(userRef(uid), update, { merge: true });
@@ -115,7 +117,10 @@ export async function changePhase(
         globalWeekIndex: 1,
         phaseWeekIndex: 1,
       },
-      phaseHistory: [...currentHistory, { phase: input.phase, startedAt: now }],
+      phaseHistory: [
+        ...currentHistory,
+        { phase: input.phase, startedAt: now, adjustmentKcal: input.adjustmentKcal, recompIntent: input.recompIntent ?? null },
+      ],
     },
     { merge: true },
   );
@@ -131,6 +136,7 @@ export async function applyStagnationAdjustment(
   uid: string,
   maintenanceCalorieGoal: number,
   currentPhaseState: PhaseState,
+  currentHistory: PhaseHistoryEntry[],
 ): Promise<void> {
   const adjustmentKcal = applyStagnationBump(currentPhaseState.adjustmentKcal);
   const dailyCalorieGoal = applyPhaseAdjustment(maintenanceCalorieGoal, {
@@ -138,6 +144,7 @@ export async function applyStagnationAdjustment(
     adjustmentKcal,
     recompIntent: currentPhaseState.recompIntent ?? undefined,
   });
+  const now = new Date().toISOString();
 
   await setDoc(
     userRef(uid),
@@ -149,6 +156,15 @@ export async function applyStagnationAdjustment(
         weeksStagnant: 0,
         monthsStagnant: 0,
       },
+      phaseHistory: [
+        ...currentHistory,
+        {
+          phase: currentPhaseState.phase,
+          startedAt: now,
+          adjustmentKcal,
+          recompIntent: currentPhaseState.recompIntent ?? null,
+        },
+      ],
     },
     { merge: true },
   );

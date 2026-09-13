@@ -8,6 +8,7 @@ import { computeStagnation } from '@/lib/nutrition/stagnation'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 import { generateSummary } from '@/lib/ai/summary'
 import { MonthlyReportSection } from '@/features/dashboard/MonthlyReportSection'
+import { WeightHistoryChart } from '@/components/WeightHistoryChart'
 import type { MealItem } from '@/lib/firestore/types'
 
 function toDate(createdAt: unknown): Date {
@@ -90,7 +91,16 @@ export function ReportsView() {
         <p className="mt-1 text-sm text-muted">Semana {weekInfo.weekIndex} · {phaseLabel}</p>
       </header>
 
-      <div className="mt-8 divide-y divide-line rounded-2xl border border-line bg-surface">
+      <div className="mt-8 rounded-2xl border border-line bg-surface p-4">
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.14em] text-faint">
+          Visão de longo prazo
+        </p>
+        <div className="mt-3">
+          <WeightHistoryChart weighIns={weighIns} />
+        </div>
+      </div>
+
+      <div className="mt-6 divide-y divide-line rounded-2xl border border-line bg-surface">
         <Row label="Saldo calórico" value={`${Math.round(weekTotalsSoFar.kcal).toLocaleString('pt-BR')} de ${weeklyCalorieGoal.toLocaleString('pt-BR')} kcal`} />
         <Row label="Média diária" value={`${Math.round(avgDailyKcal).toLocaleString('pt-BR')} kcal/dia`} />
         <Row label="Meta de proteína batida" value={`${proteinDaysHit} de ${daysElapsed} dias`} />

@@ -51,7 +51,12 @@ export function AjustesView() {
     setBumpSubmitting(true)
     setBumpError(null)
     try {
-      await applyStagnationAdjustment(userDoc.uid, userDoc.maintenanceCalorieGoal, userDoc.phaseState)
+      await applyStagnationAdjustment(
+        userDoc.uid,
+        userDoc.maintenanceCalorieGoal,
+        userDoc.phaseState,
+        userDoc.phaseHistory ?? [],
+      )
       setBumpSuccess(true)
     } catch (err) {
       console.error('applyStagnationAdjustment failed:', err)

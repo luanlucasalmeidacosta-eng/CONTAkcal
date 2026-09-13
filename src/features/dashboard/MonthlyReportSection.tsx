@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useMonthlyReport } from '@/lib/firestore/useMonthlyReport'
-import { deriveCarbGoal } from '@/lib/firestore/users'
 import { getProtocolWeekInfo } from '@/lib/nutrition/week'
 import { getMonthForWeek } from '@/lib/nutrition/monthlyReport'
 
@@ -13,20 +12,24 @@ export function MonthlyReportSection() {
   const currentMonth = getMonthForWeek(currentWeekIndex)
   const [monthIndex, setMonthIndex] = useState(currentMonth)
 
-  const { weeks, aggregateTotals, phaseSummary, loading, error } = useMonthlyReport(
-    userDoc?.uid,
-    userDoc?.protocolStartedAt,
-    userDoc?.phaseHistory,
-    monthIndex,
-  )
+  const { weeks, aggregateTotals, aggregateCalorieGoal, aggregateCarbGoal, phaseSummary, loading, error } =
+    useMonthlyReport(
+      userDoc?.uid,
+      userDoc?.protocolStartedAt,
+      userDoc?.phaseHistory,
+      {
+        maintenanceCalorieGoal: userDoc?.maintenanceCalorieGoal,
+        proteinGoal: userDoc?.proteinGoal,
+        fatGoal: userDoc?.fatGoal,
+      },
+      monthIndex,
+    )
 
   if (!userDoc) return null
 
-  const carbGoal = deriveCarbGoal(userDoc)
-  const weeklyCalorieGoal = (userDoc.dailyCalorieGoal ?? 0) * 7
   const weeksElapsed = weeks.length
   const avgCalorieBalance = weeksElapsed > 0 ? aggregateTotals.kcal / weeksElapsed : 0
-  const carbGoalSoFar = carbGoal * 7 * weeksElapsed
+  const avgCalorieGoal = weeksElapsed > 0 ? aggregateCalorieGoal / weeksElapsed : 0
   const fatGoalSoFar = (userDoc.fatGoal ?? 0) * weeksElapsed
 
   return (
@@ -63,17 +66,17 @@ export function MonthlyReportSection() {
         <p className="mt-4 text-sm text-faint">Nenhuma semana deste mês começou ainda.</p>
       ) : (
         <div className="mt-4 divide-y divide-line">
-          <Row label="Saldo calórico médio" value={`${Math.round(avgCalorieBalance).toLocaleString('pt-BR')} de ${weeklyCalorieGoal.toLocaleString('pt-BR')} kcal/semana`} />
+          <Row label="Saldo calórico médio" value={`${Math.round(avgCalorieBalance).toLocaleString('pt-BR')} de ${Math.round(avgCalorieGoal).toLocaleString('pt-BR')} kcal/semana`} />
           <Row label="Semanas avaliadas" value={`${weeksElapsed} de 4`} />
-          <Row label="Carboidrato" value={`${Math.round(aggregateTotals.carbs).toLocaleString('pt-BR')}g de ${Math.round(carbGoalSoFar).toLocaleString('pt-BR')}g`} />
+          <Row label="Carboidrato" value={`${Math.round(aggregateTotals.carbs).toLocaleString('pt-BR')}g de ${Math.round(aggregateCarbGoal).toLocaleString('pt-BR')}g`} />
           <Row label="Gordura" value={`${Math.round(aggregateTotals.fat).toLocaleString('pt-BR')}g de ${Math.round(fatGoalSoFar).toLocaleString('pt-BR')}g`} />
           <Row label="Fase(s) do mês" value={phaseSummary} />
         </div>
       )}
 
       <p className="mt-3 text-[11px] text-faint">
-        Metas calculadas com a calórica/carboidrato atuais — se a fase mudou dentro deste mês, os
-        números acima usam a meta de hoje para todas as semanas, não a meta histórica de cada fase.
+        Calorias e carboidrato usam a meta histórica de cada semana (considerando trocas de fase e
+        ajustes por estagnação); proteína e gordura usam a meta atual, baseada no peso mais recente.
       </p>
     </div>
   )

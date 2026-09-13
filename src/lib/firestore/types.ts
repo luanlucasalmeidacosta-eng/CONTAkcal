@@ -17,6 +17,8 @@ export interface UserDoc {
   email: string | null;
   createdAt: unknown;
   onboardingCompleted: boolean;
+  /** Data de conclusão do onboarding — âncora fixa dos blocos semanais globais (nunca muda). */
+  protocolStartedAt?: string;
 
   weightKg?: number;
   heightCm?: number;
@@ -60,4 +62,18 @@ export interface MealDoc {
 export interface StandardDishDoc {
   nome: string;
   variantes: { label: string; items: MealItem[] }[];
+}
+
+export interface WaterLogDoc {
+  quantidadeMl: number;
+  createdAt: unknown;
+}
+
+export type WeighInType = "semanal" | "mensal";
+
+export interface WeighInDoc {
+  peso: number;
+  tipo: WeighInType;
+  confirmadoJejumManha: boolean;
+  createdAt: unknown;
 }

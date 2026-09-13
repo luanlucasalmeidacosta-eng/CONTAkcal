@@ -2,18 +2,32 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
-
-const week = {
-  protein: { value: 92, goal: 170 },
-  calories: { value: 12400, goal: 14000 },
-  carbs: { value: 672, goal: 966 },
-  fat: { value: 266, goal: 595 },
-  weekIndex: 3,
-  phase: 'Bulking',
-}
+import { useAuth } from '@/features/auth/AuthContext'
+import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
+import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
+import { deriveCarbGoal } from '@/lib/firestore/users'
+import { deleteMeal } from '@/lib/firestore/meals'
+import { PHASE_LABELS } from '@/lib/nutrition/phase'
 
 export function WeekView() {
-  const [selectedDay, setSelectedDay] = useState(1)
+  const { userDoc } = useAuth()
+  const todayTotals = useTodayTotals(userDoc?.uid)
+  const { weekInfo, mealsByDay, weekTotalsSoFar } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
+  const [selectedDay, setSelectedDay] = useState(weekInfo.dayIndexInWeek)
+
+  if (!userDoc) return null
+
+  const carbGoal = deriveCarbGoal(userDoc)
+  const weeklyCalorieGoal = (userDoc.dailyCalorieGoal ?? 0) * 7
+  const weeklyCarbGoal = carbGoal * 7
+  const weeklyFatGoal = userDoc.fatGoal ?? 0
+  const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
+  const selectedDayMeals = mealsByDay.get(selectedDay) ?? []
+
+  async function handleRemove(mealId: string) {
+    if (!userDoc) return
+    await deleteMeal(userDoc.uid, mealId)
+  }
 
   return (
     <motion.section
@@ -26,21 +40,21 @@ export function WeekView() {
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 id="week-title" className="font-display text-3xl font-semibold tracking-tight lg:text-4xl">
-            Semana {week.weekIndex}
+            Semana {weekInfo.weekIndex}
           </h1>
           <p className="mt-1 text-sm text-muted">Bloco fixo de 7 dias</p>
         </div>
-        <PhaseChip phase={week.phase} />
+        {phaseLabel && <PhaseChip phase={phaseLabel} />}
       </header>
 
       <div className="mt-10 grid gap-6 lg:mt-14 lg:grid-cols-3 lg:items-start">
         <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-4 py-6">
           <Ring
             animateKey={5}
-            value={week.protein.value}
-            goal={week.protein.goal}
+            value={todayTotals.protein}
+            goal={userDoc.proteinGoal ?? 0}
             label="Proteína"
-            sub={`${week.protein.value}g de ${week.protein.goal}g`}
+            sub={`${Math.round(todayTotals.protein)}g de ${userDoc.proteinGoal ?? 0}g`}
             size={168}
             stroke={12}
             emphasized
@@ -50,10 +64,10 @@ export function WeekView() {
         <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-4 py-6">
           <Ring
             animateKey={6}
-            value={week.calories.value}
-            goal={week.calories.goal}
+            value={weekTotalsSoFar.kcal}
+            goal={weeklyCalorieGoal}
             label="Calorias"
-            sub={`${week.calories.value.toLocaleString('pt-BR')} de ${week.calories.goal.toLocaleString('pt-BR')} kcal`}
+            sub={`${Math.round(weekTotalsSoFar.kcal).toLocaleString('pt-BR')} de ${weeklyCalorieGoal.toLocaleString('pt-BR')} kcal`}
             size={168}
             stroke={12}
           />
@@ -63,10 +77,10 @@ export function WeekView() {
           <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-3 py-5">
             <Ring
               animateKey={7}
-              value={week.carbs.value}
-              goal={week.carbs.goal}
+              value={weekTotalsSoFar.carbs}
+              goal={weeklyCarbGoal}
               label="Carbo"
-              sub={`${week.carbs.value.toLocaleString('pt-BR')}g de ${week.carbs.goal.toLocaleString('pt-BR')}g`}
+              sub={`${Math.round(weekTotalsSoFar.carbs).toLocaleString('pt-BR')}g de ${weeklyCarbGoal.toLocaleString('pt-BR')}g`}
               size={104}
               stroke={9}
             />
@@ -74,10 +88,10 @@ export function WeekView() {
           <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-3 py-5">
             <Ring
               animateKey={8}
-              value={week.fat.value}
-              goal={week.fat.goal}
+              value={weekTotalsSoFar.fat}
+              goal={weeklyFatGoal}
               label="Gordura"
-              sub={`${week.fat.value.toLocaleString('pt-BR')}g de ${week.fat.goal.toLocaleString('pt-BR')}g`}
+              sub={`${Math.round(weekTotalsSoFar.fat).toLocaleString('pt-BR')}g de ${weeklyFatGoal.toLocaleString('pt-BR')}g`}
               size={104}
               stroke={9}
             />
@@ -92,13 +106,15 @@ export function WeekView() {
         <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
           {Array.from({ length: 7 }, (_, i) => i + 1).map((day) => {
             const isSelected = selectedDay === day
+            const isFuture = day > weekInfo.dayIndexInWeek
             return (
               <button
                 key={day}
                 type="button"
                 onClick={() => setSelectedDay(day)}
+                disabled={isFuture}
                 aria-pressed={isSelected}
-                className={`tnum min-h-[44px] min-w-[44px] flex-1 rounded-xl border font-display text-sm font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                className={`tnum min-h-[44px] min-w-[44px] flex-1 rounded-xl border font-display text-sm font-semibold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-30 ${
                   isSelected
                     ? 'border-accent bg-accent/14 text-accent'
                     : 'border-line bg-surface text-muted hover:text-fg'
@@ -109,9 +125,33 @@ export function WeekView() {
             )
           })}
         </div>
-        <p className="mt-2 text-xs text-faint">
-          Dia {selectedDay} — as refeições registradas deste dia aparecem aqui.
-        </p>
+
+        <div className="mt-3 rounded-2xl border border-line bg-surface p-3">
+          {selectedDayMeals.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-faint">Nenhuma refeição registrada neste dia.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {selectedDayMeals.map((meal) => (
+                <li
+                  key={meal.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-fg">{meal.dishName ?? meal.rawText}</p>
+                    <p className="tnum text-xs text-faint">{Math.round(meal.totals.kcal)} kcal</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(meal.id)}
+                    className="shrink-0 text-xs text-faint hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </footer>
     </motion.section>
   )

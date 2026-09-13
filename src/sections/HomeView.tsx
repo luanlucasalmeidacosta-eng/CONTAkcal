@@ -7,12 +7,15 @@ import { useAuth } from '@/features/auth/AuthContext'
 import { useMealChat } from '@/features/chat/useMealChat'
 import { MealConfirmCard } from '@/features/chat/MealConfirmCard'
 import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
+import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
+import { availableToday } from '@/lib/nutrition/week'
 
 export function HomeView() {
   const { userDoc } = useAuth()
   const todayTotals = useTodayTotals(userDoc?.uid)
+  const { weekInfo, consumedPreviousDays } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
   const chat = useMealChat()
   const [chatOpen, setChatOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -20,7 +23,14 @@ export function HomeView() {
   if (!userDoc) return null
 
   const carbGoal = deriveCarbGoal(userDoc)
-  const weeklyFatAsDaily = Math.round((userDoc.fatGoal ?? 0) / 7)
+  const { daysRemainingInWeek } = weekInfo
+  const availableCalories = availableToday(
+    (userDoc.dailyCalorieGoal ?? 0) * 7,
+    consumedPreviousDays.kcal,
+    daysRemainingInWeek,
+  )
+  const availableCarbs = availableToday(carbGoal * 7, consumedPreviousDays.carbs, daysRemainingInWeek)
+  const availableFat = availableToday(userDoc.fatGoal ?? 0, consumedPreviousDays.fat, daysRemainingInWeek)
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
 
   function handleSend() {
@@ -55,7 +65,7 @@ export function HomeView() {
           <h1 id="greeting" className="font-display text-3xl font-semibold tracking-tight lg:text-4xl">
             Bom dia
           </h1>
-          <p className="tnum mt-1 text-sm text-muted">Semana {userDoc.phaseState?.phaseWeekIndex ?? 1} do protocolo</p>
+          <p className="tnum mt-1 text-sm text-muted">Semana {weekInfo.weekIndex} do protocolo</p>
         </div>
         {phaseLabel && <PhaseChip phase={phaseLabel} />}
       </header>
@@ -76,9 +86,9 @@ export function HomeView() {
             <Ring
               animateKey={2}
               value={todayTotals.kcal}
-              goal={userDoc.dailyCalorieGoal ?? 0}
+              goal={availableCalories}
               label="Calorias"
-              sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} de ${(userDoc.dailyCalorieGoal ?? 0).toLocaleString('pt-BR')} kcal hoje`}
+              sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} kcal · ${Math.round(availableCalories).toLocaleString('pt-BR')} disponíveis hoje`}
               size={132}
               stroke={10}
             />
@@ -88,9 +98,9 @@ export function HomeView() {
               <Ring
                 animateKey={3}
                 value={todayTotals.carbs}
-                goal={carbGoal}
+                goal={availableCarbs}
                 label="Carbo"
-                sub={`${Math.round(todayTotals.carbs)}g de ${carbGoal}g`}
+                sub={`${Math.round(todayTotals.carbs)}g de ${Math.round(availableCarbs)}g hoje`}
                 size={96}
                 stroke={8}
               />
@@ -99,9 +109,9 @@ export function HomeView() {
               <Ring
                 animateKey={4}
                 value={todayTotals.fat}
-                goal={weeklyFatAsDaily}
+                goal={availableFat}
                 label="Gordura"
-                sub={`${Math.round(todayTotals.fat)}g de ~${weeklyFatAsDaily}g`}
+                sub={`${Math.round(todayTotals.fat)}g de ${Math.round(availableFat)}g hoje`}
                 size={96}
                 stroke={8}
               />

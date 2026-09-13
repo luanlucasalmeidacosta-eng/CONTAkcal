@@ -55,6 +55,7 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
   const { proteinGrams, fatGrams, waterMl } = calculateDerivedGoals(input.weightKg);
 
   const update: Partial<UserDoc> = {
+    protocolStartedAt: new Date().toISOString(),
     weightKg: input.weightKg,
     heightCm: input.heightCm,
     ageYears: input.ageYears,

@@ -8,6 +8,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -40,6 +41,21 @@ export async function addMeal(uid: string, meal: NewMeal): Promise<void> {
 
 export async function deleteMeal(uid: string, mealId: string): Promise<void> {
   await deleteDoc(doc(db, "users", uid, "meals", mealId));
+}
+
+export interface MealEdit {
+  items: MealItem[];
+  totals: MealTotals;
+  dishName?: string;
+}
+
+/** Corrige uma refeição já salva item por item (spec: correção retroativa via faixa de dias). */
+export async function updateMeal(uid: string, mealId: string, edit: MealEdit): Promise<void> {
+  await updateDoc(doc(db, "users", uid, "meals", mealId), {
+    items: edit.items,
+    totals: edit.totals,
+    dishName: edit.dishName ?? null,
+  });
 }
 
 function startOfToday(): Timestamp {

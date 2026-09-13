@@ -19,12 +19,25 @@ export function WaterView() {
 
   const goal = userDoc.waterGoal ?? 0
   const isToday = selectedDay === weekInfo.dayIndexInWeek
+  const isPastOrToday = selectedDay <= weekInfo.dayIndexInWeek
   const selectedDayLogs = logsByDay.get(selectedDay) ?? []
+  const selectedDayDate = new Date(weekInfo.weekStart.getTime() + (selectedDay - 1) * 24 * 60 * 60 * 1000)
 
   async function addQuick(ml: number) {
     if (!userDoc) return
     try {
       await addWaterLog(userDoc.uid, ml)
+      setError(null)
+    } catch (err) {
+      console.error('addWaterLog failed:', err)
+      setError('Não foi possível registrar. Tente novamente.')
+    }
+  }
+
+  async function addToSelectedDay(ml: number) {
+    if (!userDoc) return
+    try {
+      await addWaterLog(userDoc.uid, ml, isToday ? undefined : selectedDayDate)
       setError(null)
     } catch (err) {
       console.error('addWaterLog failed:', err)
@@ -168,6 +181,21 @@ export function WaterView() {
                 </li>
               ))}
             </ul>
+          )}
+
+          {isPastOrToday && !isToday && (
+            <div className="mt-3 flex gap-2">
+              {QUICK_AMOUNTS.map((ml) => (
+                <button
+                  key={ml}
+                  type="button"
+                  onClick={() => addToSelectedDay(ml)}
+                  className="flex min-h-[40px] flex-1 items-center justify-center gap-1 rounded-lg border border-line bg-bg text-xs font-semibold text-fg transition-colors duration-200 hover:border-accent/60"
+                >
+                  +{ml}ml
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </footer>

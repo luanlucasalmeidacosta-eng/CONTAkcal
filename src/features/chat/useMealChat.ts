@@ -7,7 +7,7 @@ import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
 
 type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
 
-export function useMealChat() {
+export function useMealChat(targetDate?: Date) {
   const { firebaseUser } = useAuth();
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [history, setHistory] = useState<ConversationTurn[]>([]);
@@ -74,6 +74,7 @@ export function useMealChat() {
         dishName: finalDishName,
         items: finalItems,
         totals: recalculatedTotals,
+        at: targetDate,
       });
 
       if (finalDishName && finalItems.length > 1) {

@@ -1,11 +1,10 @@
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
 import { IconSpark } from '@/icons'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useMealChat } from '@/features/chat/useMealChat'
-import { MealConfirmCard } from '@/features/chat/MealConfirmCard'
+import { MealChatModal } from '@/features/chat/MealChatModal'
 import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
 import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
@@ -17,9 +16,7 @@ export function HomeView() {
   const { userDoc } = useAuth()
   const todayTotals = useTodayTotals(userDoc?.uid)
   const { weekInfo, consumedPreviousDays } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
-  const chat = useMealChat()
   const [chatOpen, setChatOpen] = useState(false)
-  const [draft, setDraft] = useState('')
 
   if (!userDoc) return null
 
@@ -33,25 +30,6 @@ export function HomeView() {
   const availableCarbs = availableToday(carbGoal * 7, consumedPreviousDays.carbs, daysRemainingInWeek)
   const availableFat = availableToday(userDoc.fatGoal ?? 0, consumedPreviousDays.fat, daysRemainingInWeek)
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
-
-  function handleSend() {
-    if (!draft.trim()) return
-    chat.sendMessage(draft)
-    setDraft('')
-  }
-
-  function handleAdjust() {
-    chat.reset()
-    setDraft('')
-  }
-
-  const isSaving = chat.phase === 'saving'
-
-  function closeChat() {
-    setChatOpen(false)
-    chat.reset()
-    setDraft('')
-  }
 
   return (
     <motion.section
@@ -135,82 +113,20 @@ export function HomeView() {
         </motion.button>
       </div>
 
-      <AnimatePresence>
-        {chatOpen && (
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Registro de refeição"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-x-0 bottom-[72px] z-50 mx-auto w-[calc(100%-32px)] max-w-xl lg:bottom-auto lg:inset-y-0 lg:inset-x-auto lg:right-6 lg:top-24 lg:w-96"
-          >
-            <div className="max-h-[80vh] overflow-y-auto rounded-2xl border border-accent/40 bg-surface-2 p-4 shadow-[0_0_40px_rgb(255_107_26/0.12)]">
-              <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-accent">
-                Registrar refeição com IA
-              </p>
-
-              {chat.phase === 'ready' && chat.items ? (
-                <MealConfirmCard
-                  items={chat.items}
-                  suggestedDishName={chat.dishName}
-                  saving={isSaving}
-                  onConfirm={(items, name) => chat.confirm(items, name)}
-                  onAdjust={handleAdjust}
-                />
-              ) : chat.phase === 'confirmed' ? (
-                <p className="mt-3 text-sm text-fg">
-                  {buildPostMealFeedback({
-                    proteinConsumed: todayTotals.protein,
-                    proteinGoal: userDoc.proteinGoal ?? 0,
-                    carbsConsumed: todayTotals.carbs,
-                    fatConsumed: todayTotals.fat,
-                    caloriesRemaining: availableCalories - todayTotals.kcal,
-                  })}
-                </p>
-              ) : (
-                <>
-                  {chat.phase === 'asking' && chat.question && (
-                    <p className="mt-3 text-sm text-fg">{chat.question}</p>
-                  )}
-                  <div className="mt-3 flex gap-2">
-                    <input
-                      type="text"
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                      placeholder={chat.phase === 'asking' ? 'Responda aqui…' : 'O que você comeu hoje?'}
-                      disabled={chat.phase === 'loading'}
-                      className="min-h-[48px] flex-1 rounded-xl border border-line bg-bg px-4 text-base text-fg placeholder:text-faint focus:border-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-accent"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSend}
-                      disabled={chat.phase === 'loading'}
-                      className="min-h-[48px] rounded-xl bg-accent px-4 font-display text-sm font-semibold text-bg transition-opacity duration-200 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
-                    >
-                      {chat.phase === 'loading' ? 'Calculando' : 'Enviar'}
-                    </button>
-                  </div>
-                  {chat.phase === 'error' && chat.error && (
-                    <p className="mt-3 text-xs text-accent-soft">{chat.error}</p>
-                  )}
-                </>
-              )}
-
-              <button
-                type="button"
-                onClick={closeChat}
-                className="mt-3 min-h-[44px] w-full rounded-xl border border-line text-xs font-semibold uppercase tracking-[0.14em] text-muted transition-colors duration-200 hover:text-fg focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                Fechar
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MealChatModal
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        title="Registrar refeição com IA"
+        renderConfirmedFeedback={() =>
+          buildPostMealFeedback({
+            proteinConsumed: todayTotals.protein,
+            proteinGoal: userDoc.proteinGoal ?? 0,
+            carbsConsumed: todayTotals.carbs,
+            fatConsumed: todayTotals.fat,
+            caloriesRemaining: availableCalories - todayTotals.kcal,
+          })
+        }
+      />
     </motion.section>
   )
 }

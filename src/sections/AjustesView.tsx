@@ -12,11 +12,16 @@ function toDate(createdAt: unknown): Date {
   return (createdAt as { toDate?: () => Date })?.toDate?.() ?? new Date()
 }
 
+function todayInputValue(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function AjustesView() {
   const { userDoc } = useAuth()
   const [weighIns, setWeighIns] = useState<WeighInWithId[]>([])
   const [tipo, setTipo] = useState<WeighInType>('semanal')
   const [peso, setPeso] = useState('')
+  const [dataStr, setDataStr] = useState(todayInputValue())
   const [jejum, setJejum] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,9 +77,11 @@ export function AjustesView() {
     setError(null)
     setSuccess(false)
     try {
-      await addWeighIn(userDoc.uid, { peso: pesoNumero, tipo, confirmadoJejumManha: jejum })
+      const at = dataStr ? new Date(`${dataStr}T12:00:00`) : undefined
+      await addWeighIn(userDoc.uid, { peso: pesoNumero, tipo, confirmadoJejumManha: jejum, at })
       setPeso('')
       setJejum(false)
+      setDataStr(todayInputValue())
       setSuccess(true)
     } catch (err) {
       console.error('addWeighIn failed:', err)
@@ -133,6 +140,17 @@ export function AjustesView() {
           />
           <span className="font-display text-sm text-muted">kg</span>
         </div>
+
+        <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-4 py-3 text-sm text-fg">
+          <span className="text-muted">Data da pesagem</span>
+          <input
+            type="date"
+            value={dataStr}
+            max={todayInputValue()}
+            onChange={(e) => setDataStr(e.target.value)}
+            className="tnum bg-transparent text-right text-fg focus:outline-none"
+          />
+        </label>
 
         {tipo === 'mensal' && (
           <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-bg px-4 py-3 text-sm text-fg">

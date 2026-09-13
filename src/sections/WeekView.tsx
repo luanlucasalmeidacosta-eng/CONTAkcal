@@ -3,10 +3,12 @@ import { motion } from 'framer-motion'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
 import { useAuth } from '@/features/auth/AuthContext'
+import { MealChatModal } from '@/features/chat/MealChatModal'
+import { EditMealModal } from '@/features/meals/EditMealModal'
 import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
 import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
-import { deleteMeal } from '@/lib/firestore/meals'
+import { deleteMeal, type MealWithId } from '@/lib/firestore/meals'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 
 export function WeekView() {
@@ -15,6 +17,8 @@ export function WeekView() {
   const { weekInfo, mealsByDay, weekTotalsSoFar } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
   const [selectedDay, setSelectedDay] = useState(weekInfo.dayIndexInWeek)
   const [error, setError] = useState<string | null>(null)
+  const [addMealOpen, setAddMealOpen] = useState(false)
+  const [editingMeal, setEditingMeal] = useState<MealWithId | null>(null)
 
   if (!userDoc) return null
 
@@ -24,6 +28,9 @@ export function WeekView() {
   const weeklyFatGoal = userDoc.fatGoal ?? 0
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
   const selectedDayMeals = mealsByDay.get(selectedDay) ?? []
+
+  const selectedDayDate = new Date(weekInfo.weekStart.getTime() + (selectedDay - 1) * 24 * 60 * 60 * 1000)
+  const isPastOrToday = selectedDay <= weekInfo.dayIndexInWeek
 
   async function handleRemove(mealId: string) {
     if (!userDoc) return
@@ -142,10 +149,14 @@ export function WeekView() {
                   key={meal.id}
                   className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2"
                 >
-                  <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMeal(meal)}
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <p className="truncate text-sm text-fg">{meal.dishName ?? meal.rawText}</p>
-                    <p className="tnum text-xs text-faint">{Math.round(meal.totals.kcal)} kcal</p>
-                  </div>
+                    <p className="tnum text-xs text-faint">{Math.round(meal.totals.kcal)} kcal · editar</p>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleRemove(meal.id)}
@@ -158,8 +169,30 @@ export function WeekView() {
             </ul>
           )}
           {error && <p className="mt-2 text-xs text-accent-soft">{error}</p>}
+
+          {isPastOrToday && (
+            <button
+              type="button"
+              onClick={() => setAddMealOpen(true)}
+              className="mt-3 min-h-[44px] w-full rounded-xl border border-accent/40 bg-accent/10 font-display text-xs font-semibold uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:bg-accent/16"
+            >
+              + Adicionar refeição neste dia
+            </button>
+          )}
         </div>
       </footer>
+
+      <MealChatModal
+        open={addMealOpen}
+        onClose={() => setAddMealOpen(false)}
+        title={`Adicionar refeição — Dia ${selectedDay}`}
+        targetDate={selectedDayDate}
+        renderConfirmedFeedback={() => 'Refeição registrada nesse dia.'}
+      />
+
+      {editingMeal && userDoc && (
+        <EditMealModal uid={userDoc.uid} meal={editingMeal} onClose={() => setEditingMeal(null)} />
+      )}
     </motion.section>
   )
 }

@@ -7,11 +7,16 @@ import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
 
 type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
 
+export interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export function useMealChat(targetDate?: Date) {
   const { firebaseUser } = useAuth();
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [history, setHistory] = useState<ConversationTurn[]>([]);
-  const [question, setQuestion] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [dishName, setDishName] = useState<string | undefined>();
   const [items, setItems] = useState<MealItem[] | null>(null);
   const [totals, setTotals] = useState<MealTotals | null>(null);
@@ -27,13 +32,12 @@ export function useMealChat(targetDate?: Date) {
       setHistory([...nextHistory, { role: "model", text: JSON.stringify(result) }]);
 
       if (result.status === "need_info" && result.question) {
-        setQuestion(result.question);
+        setMessages((prev) => [...prev, { role: "assistant", text: result.question! }]);
         setPhase("asking");
       } else if (result.status === "complete" && result.items && result.totals) {
         setDishName(result.dishName);
         setItems(result.items);
         setTotals(result.totals);
-        setQuestion(null);
         setPhase("ready");
       } else {
         throw new Error("Resposta da IA incompleta.");
@@ -48,6 +52,7 @@ export function useMealChat(targetDate?: Date) {
   function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
+    setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
     void runTurn([...history, { role: "user", text: trimmed }]);
   }
 
@@ -82,8 +87,6 @@ export function useMealChat(targetDate?: Date) {
       }
 
       setHistory([]);
-      setQuestion(null);
-      setDishName(undefined);
       setItems(null);
       setTotals(null);
       setError(null);
@@ -98,12 +101,12 @@ export function useMealChat(targetDate?: Date) {
   function reset() {
     setPhase("idle");
     setHistory([]);
-    setQuestion(null);
+    setMessages([]);
     setDishName(undefined);
     setItems(null);
     setTotals(null);
     setError(null);
   }
 
-  return { phase, question, dishName, items, totals, error, sendMessage, confirm, reset };
+  return { phase, messages, dishName, items, totals, error, sendMessage, confirm, reset };
 }

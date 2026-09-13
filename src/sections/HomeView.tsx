@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
 import { LoadingBar } from '@/components/LoadingBar'
-import { IconSpark } from '@/icons'
+import { IconMealPlate } from '@/icons'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
 import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
@@ -131,19 +131,21 @@ export function HomeView() {
           </div>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={() => setChatOpen(true)}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          className="group flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-5 py-4 text-left transition-colors duration-200 hover:border-accent hover:bg-accent/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:sticky lg:top-10"
-        >
-          <IconSpark size={24} className="text-accent transition-transform duration-300 group-hover:scale-110" />
-          <span className="font-display text-base font-semibold text-fg">
-            Registrar refeição com IA
-          </span>
-        </motion.button>
+        <div className="flex flex-col items-center gap-2 lg:sticky lg:top-10 lg:items-start">
+          <motion.button
+            type="button"
+            onClick={() => setChatOpen(true)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            aria-label="Registrar refeição com IA"
+            className="group glow-ring flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded-3xl border border-accent/40 bg-accent/10 transition-colors duration-200 hover:border-accent hover:bg-accent/16 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <IconMealPlate size={30} className="text-accent transition-transform duration-300 group-hover:scale-110" />
+            <span className="font-display text-[10px] font-semibold uppercase tracking-wider text-accent">IA</span>
+          </motion.button>
+          <p className="font-display text-xs font-semibold text-muted">Registrar refeição</p>
+        </div>
       </div>
 
       <MealChatModal

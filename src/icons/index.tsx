@@ -80,6 +80,17 @@ export function IconGoogle(props: IconProps) {
   ))
 }
 
+export function IconMealPlate(props: IconProps) {
+  return base(props, (
+    <>
+      <circle cx="16" cy="13" r="6" />
+      <path d="M3.5 3v5a1.6 1.6 0 0 0 3.2 0V3" />
+      <path d="M5.1 8v13" />
+      <path d="M9.8 3c0 2.4-1.6 3.4-1.6 5.8S9.8 12 9.8 12v9" />
+    </>
+  ))
+}
+
 export function IconSpark(props: IconProps) {
   return base({ strokeWidth: 1.5, ...props }, (
     <>

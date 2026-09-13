@@ -69,6 +69,17 @@ export function IconSettings(props: IconProps) {
   ))
 }
 
+export function IconGoogle(props: IconProps) {
+  return base({ strokeWidth: 1.5, ...props }, (
+    <>
+      <path d="M20.5 12.2c0-.65-.06-1.27-.16-1.87H12v3.54h4.77a4.08 4.08 0 0 1-1.77 2.68v2.2h2.86c1.68-1.55 2.64-3.83 2.64-6.55Z" />
+      <path d="M12 21c2.4 0 4.4-.79 5.86-2.15l-2.86-2.2c-.79.53-1.81.85-3 .85-2.3 0-4.26-1.56-4.96-3.64H4.09v2.28A9 9 0 0 0 12 21Z" />
+      <path d="M7.04 13.86A5.4 5.4 0 0 1 6.75 12c0-.65.11-1.28.29-1.86V7.86H4.09A9 9 0 0 0 3 12c0 1.45.35 2.83.96 4.14l3.08-2.28Z" />
+      <path d="M12 6.5c1.3 0 2.47.45 3.39 1.33l2.54-2.54C16.4 3.9 14.4 3 12 3a9 9 0 0 0-8 4.86l3.04 2.28C7.74 8.06 9.7 6.5 12 6.5Z" />
+    </>
+  ))
+}
+
 export function IconSpark(props: IconProps) {
   return base({ strokeWidth: 1.5, ...props }, (
     <>

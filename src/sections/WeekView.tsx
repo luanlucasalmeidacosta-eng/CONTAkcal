@@ -14,6 +14,7 @@ export function WeekView() {
   const todayTotals = useTodayTotals(userDoc?.uid)
   const { weekInfo, mealsByDay, weekTotalsSoFar } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
   const [selectedDay, setSelectedDay] = useState(weekInfo.dayIndexInWeek)
+  const [error, setError] = useState<string | null>(null)
 
   if (!userDoc) return null
 
@@ -26,7 +27,11 @@ export function WeekView() {
 
   async function handleRemove(mealId: string) {
     if (!userDoc) return
-    await deleteMeal(userDoc.uid, mealId)
+    try {
+      await deleteMeal(userDoc.uid, mealId)
+    } catch {
+      setError('Não foi possível remover. Tente novamente.')
+    }
   }
 
   return (
@@ -151,6 +156,7 @@ export function WeekView() {
               ))}
             </ul>
           )}
+          {error && <p className="mt-2 text-xs text-accent-soft">{error}</p>}
         </div>
       </footer>
     </motion.section>

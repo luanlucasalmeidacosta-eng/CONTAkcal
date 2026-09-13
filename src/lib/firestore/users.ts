@@ -1,9 +1,9 @@
 import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { calculateCarbGoal, calculateDerivedGoals, type ActivityLevel, type Sex } from "@/lib/nutrition/dri";
-import { applyPhaseAdjustment, type Phase, type RecompIntent } from "@/lib/nutrition/phase";
+import { applyPhaseAdjustment, applyStagnationBump, type Phase, type RecompIntent } from "@/lib/nutrition/phase";
 import type { PhaseHistoryEntry } from "@/lib/nutrition/phaseHistory";
-import type { UserDoc } from "./types";
+import type { PhaseState, UserDoc } from "./types";
 
 function userRef(uid: string) {
   return doc(db, "users", uid);
@@ -116,6 +116,39 @@ export async function changePhase(
         phaseWeekIndex: 1,
       },
       phaseHistory: [...currentHistory, { phase: input.phase, startedAt: now }],
+    },
+    { merge: true },
+  );
+}
+
+/**
+ * Ajuste de ±100kcal por estagnação DENTRO da mesma fase (spec 4.1) —
+ * diferente de `changePhase`: mantém a fase, `startedAt` e a numeração de
+ * semana da fase (`phaseWeekIndex`/`globalWeekIndex`) intactos, só soma o
+ * ajuste e zera os contadores de estagnação (a ação já foi tomada).
+ */
+export async function applyStagnationAdjustment(
+  uid: string,
+  maintenanceCalorieGoal: number,
+  currentPhaseState: PhaseState,
+): Promise<void> {
+  const adjustmentKcal = applyStagnationBump(currentPhaseState.adjustmentKcal);
+  const dailyCalorieGoal = applyPhaseAdjustment(maintenanceCalorieGoal, {
+    phase: currentPhaseState.phase,
+    adjustmentKcal,
+    recompIntent: currentPhaseState.recompIntent,
+  });
+
+  await setDoc(
+    userRef(uid),
+    {
+      dailyCalorieGoal,
+      phaseState: {
+        ...currentPhaseState,
+        adjustmentKcal,
+        weeksStagnant: 0,
+        monthsStagnant: 0,
+      },
     },
     { merge: true },
   );

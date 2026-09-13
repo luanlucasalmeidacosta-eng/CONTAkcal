@@ -2,6 +2,7 @@ export type Phase = "manutencao" | "bulking" | "cutting" | "recomposicao";
 export type RecompIntent = "perder_gordura" | "ganhar_massa";
 
 export const RECOMP_ADJUSTMENT_KCAL = 100;
+export const STAGNATION_ADJUSTMENT_KCAL = 100;
 export const QUICK_ADJUSTMENT_SUGGESTIONS = [200, 250, 300, 350] as const;
 
 export interface PhaseAdjustmentInput {
@@ -27,6 +28,15 @@ export function resolvePhaseDeltaKcal(input: PhaseAdjustmentInput): number {
 
 export function applyPhaseAdjustment(baseCalories: number, input: PhaseAdjustmentInput): number {
   return Math.round(baseCalories + resolvePhaseDeltaKcal(input));
+}
+
+/**
+ * Ajuste de estagnação dentro da MESMA fase (spec 4.1) — só faz sentido para
+ * Bulking/Cutting. Nos dois casos o "adjustmentKcal" (sempre positivo) só
+ * cresce; quem aplica o sinal certo (+ ou −) é `resolvePhaseDeltaKcal`.
+ */
+export function applyStagnationBump(currentAdjustmentKcal: number): number {
+  return currentAdjustmentKcal + STAGNATION_ADJUSTMENT_KCAL;
 }
 
 export const PHASE_LABELS: Record<Phase, string> = {

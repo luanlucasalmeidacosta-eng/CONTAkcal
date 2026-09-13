@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/AuthContext'
 import { PhaseChangeCard } from '@/features/phase/PhaseChangeCard'
 import { addWeighIn, subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
+import { applyStagnationAdjustment } from '@/lib/firestore/users'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
+import { PHASE_LABELS, STAGNATION_ADJUSTMENT_KCAL } from '@/lib/nutrition/phase'
 import type { WeighInType } from '@/lib/firestore/types'
 
 function toDate(createdAt: unknown): Date {
@@ -19,6 +21,9 @@ export function AjustesView() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [bumpSubmitting, setBumpSubmitting] = useState(false)
+  const [bumpError, setBumpError] = useState<string | null>(null)
+  const [bumpSuccess, setBumpSuccess] = useState(false)
 
   useEffect(() => {
     if (!userDoc?.uid) return
@@ -33,6 +38,27 @@ export function AjustesView() {
   const stagnation = computeStagnation(
     weighIns.map((w) => ({ peso: w.peso, tipo: w.tipo, createdAt: toDate(w.createdAt) })),
   )
+
+  const currentPhase = userDoc.phaseState?.phase
+  const canBumpAdjustment =
+    stagnation.isStagnant &&
+    (currentPhase === 'bulking' || currentPhase === 'cutting') &&
+    userDoc.phaseState &&
+    userDoc.maintenanceCalorieGoal
+
+  async function handleBumpAdjustment() {
+    if (!userDoc?.phaseState || !userDoc.maintenanceCalorieGoal) return
+    setBumpSubmitting(true)
+    setBumpError(null)
+    try {
+      await applyStagnationAdjustment(userDoc.uid, userDoc.maintenanceCalorieGoal, userDoc.phaseState)
+      setBumpSuccess(true)
+    } catch {
+      setBumpError('Não foi possível aplicar o ajuste. Tente novamente.')
+    } finally {
+      setBumpSubmitting(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!userDoc || !valid) return
@@ -136,6 +162,30 @@ export function AjustesView() {
               ? `Estagnado há ${stagnation.weeksStagnant > 0 ? `${stagnation.weeksStagnant} semanas` : `${stagnation.monthsStagnant} mês(es)`} — considere ajustar sua fase.`
               : 'Sem sinais de estagnação no momento.'}
           </p>
+
+          {canBumpAdjustment && !bumpSuccess && (
+            <>
+              <p className="mt-3 text-xs text-faint">
+                Ajuste rápido sem trocar de fase: soma {STAGNATION_ADJUSTMENT_KCAL}kcal ao{' '}
+                {currentPhase === 'bulking' ? 'superávit' : 'déficit'} do {PHASE_LABELS[currentPhase!]},
+                mantendo a numeração de semana da fase.
+              </p>
+              <button
+                type="button"
+                disabled={bumpSubmitting}
+                onClick={handleBumpAdjustment}
+                className="mt-2 min-h-[44px] w-full rounded-xl border border-accent/40 bg-accent/10 font-display text-xs font-semibold uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:bg-accent/16 disabled:opacity-50"
+              >
+                {bumpSubmitting
+                  ? 'Aplicando…'
+                  : `Ajustar ${currentPhase === 'bulking' ? '+' : '-'}${STAGNATION_ADJUSTMENT_KCAL}kcal`}
+              </button>
+              {bumpError && <p className="mt-2 text-xs text-accent-soft">{bumpError}</p>}
+            </>
+          )}
+          {bumpSuccess && (
+            <p className="mt-3 text-xs text-accent">Ajuste aplicado — calórica recalculada.</p>
+          )}
         </div>
       )}
 

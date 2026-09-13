@@ -17,7 +17,8 @@ function todayInputValue(): string {
 }
 
 export function AjustesView() {
-  const { userDoc } = useAuth()
+  const { userDoc, logout } = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
   const [weighIns, setWeighIns] = useState<WeighInWithId[]>([])
   const [tipo, setTipo] = useState<WeighInType>('semanal')
   const [peso, setPeso] = useState('')
@@ -68,6 +69,16 @@ export function AjustesView() {
       setBumpError('Não foi possível aplicar o ajuste. Tente novamente.')
     } finally {
       setBumpSubmitting(false)
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    try {
+      await logout()
+    } catch (err) {
+      console.error('logout failed:', err)
+      setLoggingOut(false)
     }
   }
 
@@ -215,6 +226,15 @@ export function AjustesView() {
       )}
 
       <PhaseChangeCard />
+
+      <button
+        type="button"
+        disabled={loggingOut}
+        onClick={handleLogout}
+        className="mt-6 min-h-[48px] w-full rounded-2xl border border-line font-display text-sm font-semibold text-muted transition-colors duration-200 hover:border-accent-soft hover:text-accent-soft disabled:opacity-50"
+      >
+        {loggingOut ? 'Saindo…' : 'Sair da conta'}
+      </button>
     </motion.section>
   )
 }

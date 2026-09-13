@@ -5,7 +5,7 @@ import { addMeal } from "@/lib/firestore/meals";
 import type { MealItem, MealTotals } from "@/lib/firestore/types";
 import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
 
-type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "error";
+type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
 
 export function useMealChat() {
   const { firebaseUser } = useAuth();
@@ -79,7 +79,13 @@ export function useMealChat() {
         await upsertDish(firebaseUser.uid, finalDishName, "padrão", finalItems);
       }
 
-      reset();
+      setHistory([]);
+      setQuestion(null);
+      setDishName(undefined);
+      setItems(null);
+      setTotals(null);
+      setError(null);
+      setPhase("confirmed");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao salvar a refeição.");
       setPhase("error");

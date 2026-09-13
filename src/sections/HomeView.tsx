@@ -11,6 +11,7 @@ import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 import { availableToday } from '@/lib/nutrition/week'
+import { buildPostMealFeedback } from '@/lib/nutrition/feedback'
 
 export function HomeView() {
   const { userDoc } = useAuth()
@@ -159,6 +160,16 @@ export function HomeView() {
                   onConfirm={(items, name) => chat.confirm(items, name)}
                   onAdjust={handleAdjust}
                 />
+              ) : chat.phase === 'confirmed' ? (
+                <p className="mt-3 text-sm text-fg">
+                  {buildPostMealFeedback({
+                    proteinConsumed: todayTotals.protein,
+                    proteinGoal: userDoc.proteinGoal ?? 0,
+                    carbsConsumed: todayTotals.carbs,
+                    fatConsumed: todayTotals.fat,
+                    caloriesRemaining: availableCalories - todayTotals.kcal,
+                  })}
+                </p>
               ) : (
                 <>
                   {chat.phase === 'asking' && chat.question && (

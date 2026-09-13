@@ -32,3 +32,32 @@ export interface UserDoc {
 
   phaseState?: PhaseState;
 }
+
+export interface MealItem {
+  name: string;
+  quantity: string;
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MealTotals {
+  kcal: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MealDoc {
+  rawText: string;
+  dishName?: string;
+  items: MealItem[];
+  totals: MealTotals;
+  createdAt: unknown;
+}
+
+export interface StandardDishDoc {
+  nome: string;
+  variantes: { label: string; items: MealItem[] }[];
+}

@@ -1,5 +1,6 @@
 import type { ActivityLevel, Sex } from "@/lib/nutrition/dri";
 import type { Phase, RecompIntent } from "@/lib/nutrition/phase";
+import type { PhaseHistoryEntry } from "@/lib/nutrition/phaseHistory";
 
 export interface PhaseState {
   phase: Phase;
@@ -33,6 +34,8 @@ export interface UserDoc {
   waterGoal?: number;
 
   phaseState?: PhaseState;
+  /** Histórico de trocas de fase — usado para reconstruir "qual fase valia em cada semana" nos relatórios mensais. */
+  phaseHistory?: PhaseHistoryEntry[];
 }
 
 export interface MealItem {

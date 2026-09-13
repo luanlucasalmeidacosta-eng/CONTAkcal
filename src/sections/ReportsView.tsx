@@ -7,6 +7,7 @@ import { deriveCarbGoal } from '@/lib/firestore/users'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 import { generateSummary } from '@/lib/ai/summary'
+import { MonthlyReportSection } from '@/features/dashboard/MonthlyReportSection'
 import type { MealItem } from '@/lib/firestore/types'
 
 function toDate(createdAt: unknown): Date {
@@ -84,7 +85,7 @@ export function ReportsView() {
       className="mx-auto w-full max-w-xl px-5 pt-10 lg:max-w-2xl lg:pt-16"
     >
       <header>
-        <h1 className="font-display text-3xl font-semibold tracking-tight lg:text-4xl">Relatório semanal</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight lg:text-4xl">Relatórios</h1>
         <p className="mt-1 text-sm text-muted">Semana {weekInfo.weekIndex} · {phaseLabel}</p>
       </header>
 
@@ -103,6 +104,8 @@ export function ReportsView() {
           value={stagnation.isStagnant ? 'Estagnado' : 'Progredindo'}
         />
       </div>
+
+      <MonthlyReportSection />
 
       <div className="mt-6 rounded-2xl border border-accent/40 bg-surface-2 p-4">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-accent">

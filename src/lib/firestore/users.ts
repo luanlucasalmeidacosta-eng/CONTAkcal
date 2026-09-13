@@ -2,6 +2,7 @@ import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/fires
 import { db } from "@/lib/firebase";
 import { calculateCarbGoal, calculateDerivedGoals, type ActivityLevel, type Sex } from "@/lib/nutrition/dri";
 import { applyPhaseAdjustment, type Phase, type RecompIntent } from "@/lib/nutrition/phase";
+import type { PhaseHistoryEntry } from "@/lib/nutrition/phaseHistory";
 import type { UserDoc } from "./types";
 
 function userRef(uid: string) {
@@ -53,9 +54,10 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
   });
 
   const { proteinGrams, fatGrams, waterMl } = calculateDerivedGoals(input.weightKg);
+  const now = new Date().toISOString();
 
   const update: Partial<UserDoc> = {
-    protocolStartedAt: new Date().toISOString(),
+    protocolStartedAt: now,
     weightKg: input.weightKg,
     heightCm: input.heightCm,
     ageYears: input.ageYears,
@@ -69,7 +71,7 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
     onboardingCompleted: true,
     phaseState: {
       phase: input.phase,
-      startedAt: new Date().toISOString(),
+      startedAt: now,
       adjustmentKcal: input.adjustmentKcal,
       recompIntent: input.recompIntent,
       weeksStagnant: 0,
@@ -77,9 +79,46 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
       globalWeekIndex: 1,
       phaseWeekIndex: 1,
     },
+    phaseHistory: [{ phase: input.phase, startedAt: now }],
   };
 
   await setDoc(userRef(uid), update, { merge: true });
+}
+
+export interface ChangePhaseInput {
+  phase: Phase;
+  adjustmentKcal: number;
+  recompIntent?: RecompIntent;
+}
+
+/** Troca de fase (spec 4.2 — sempre manual). Reinicia a numeração de semana da fase e o contador de estagnação. */
+export async function changePhase(
+  uid: string,
+  maintenanceCalorieGoal: number,
+  input: ChangePhaseInput,
+  currentHistory: PhaseHistoryEntry[],
+): Promise<void> {
+  const dailyCalorieGoal = applyPhaseAdjustment(maintenanceCalorieGoal, input);
+  const now = new Date().toISOString();
+
+  await setDoc(
+    userRef(uid),
+    {
+      dailyCalorieGoal,
+      phaseState: {
+        phase: input.phase,
+        startedAt: now,
+        adjustmentKcal: input.adjustmentKcal,
+        recompIntent: input.recompIntent,
+        weeksStagnant: 0,
+        monthsStagnant: 0,
+        globalWeekIndex: 1,
+        phaseWeekIndex: 1,
+      },
+      phaseHistory: [...currentHistory, { phase: input.phase, startedAt: now }],
+    },
+    { merge: true },
+  );
 }
 
 export function deriveCarbGoal(user: UserDoc): number {

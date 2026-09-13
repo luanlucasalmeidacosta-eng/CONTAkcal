@@ -17,6 +17,12 @@ export interface ProtocolWeekInfo {
   daysRemainingInWeek: number;
 }
 
+/** Meia-noite do primeiro dia do bloco semanal `weekIndex` (1-based). */
+export function getWeekStartDate(protocolStartedAt: string, weekIndex: number): Date {
+  const start = atMidnight(new Date(protocolStartedAt));
+  return new Date(start.getTime() + (weekIndex - 1) * 7 * MS_PER_DAY);
+}
+
 /** Blocos semanais fixos de 7 dias corridos, contados desde a conclusão do onboarding (spec 5.1). */
 export function getProtocolWeekInfo(protocolStartedAt: string, now: Date = new Date()): ProtocolWeekInfo {
   const start = atMidnight(new Date(protocolStartedAt));
@@ -25,7 +31,7 @@ export function getProtocolWeekInfo(protocolStartedAt: string, now: Date = new D
   const daysSinceStart = Math.max(0, Math.floor((today.getTime() - start.getTime()) / MS_PER_DAY));
   const weekIndex = Math.floor(daysSinceStart / 7) + 1;
   const dayIndexInWeek = (daysSinceStart % 7) + 1;
-  const weekStart = new Date(start.getTime() + (weekIndex - 1) * 7 * MS_PER_DAY);
+  const weekStart = getWeekStartDate(protocolStartedAt, weekIndex);
   const daysRemainingInWeek = 7 - dayIndexInWeek + 1;
 
   return { weekIndex, dayIndexInWeek, weekStart, daysRemainingInWeek };

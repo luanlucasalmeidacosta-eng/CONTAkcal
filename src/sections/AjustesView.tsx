@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/AuthContext'
+import { PhaseChangeCard } from '@/features/phase/PhaseChangeCard'
 import { addWeighIn, subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
 import type { WeighInType } from '@/lib/firestore/types'
@@ -137,6 +138,8 @@ export function AjustesView() {
           </p>
         </div>
       )}
+
+      <PhaseChangeCard />
     </motion.section>
   )
 }

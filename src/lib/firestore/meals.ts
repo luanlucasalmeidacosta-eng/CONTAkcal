@@ -4,6 +4,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -69,6 +70,18 @@ export function subscribeWeekMeals(uid: string, weekStart: Date, callback: (meal
     orderBy("createdAt", "asc"),
   );
   return onSnapshot(q, (snap) => callback(withId(snap)));
+}
+
+/** Busca única (sem listener) das refeições num intervalo de datas — usado no relatório mensal. */
+export async function getMealsInRange(uid: string, start: Date, end: Date): Promise<MealWithId[]> {
+  const q = query(
+    mealsRef(uid),
+    where("createdAt", ">=", Timestamp.fromDate(start)),
+    where("createdAt", "<", Timestamp.fromDate(end)),
+    orderBy("createdAt", "asc"),
+  );
+  const snap = await getDocs(q);
+  return withId(snap);
 }
 
 export function sumTotals(meals: MealDoc[]): MealTotals {

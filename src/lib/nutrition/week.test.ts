@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { availableToday, getProtocolWeekInfo } from "./week";
+import { availableToday, getProtocolWeekInfo, getWeekStartDate } from "./week";
 
 describe("getProtocolWeekInfo", () => {
   it("dia 1 da semana 1 no dia do onboarding", () => {
@@ -21,6 +21,18 @@ describe("getProtocolWeekInfo", () => {
     expect(info.weekIndex).toBe(2);
     expect(info.dayIndexInWeek).toBe(1);
     expect(info.daysRemainingInWeek).toBe(7);
+  });
+});
+
+describe("getWeekStartDate", () => {
+  it("semana 1 começa no dia do onboarding", () => {
+    const start = getWeekStartDate("2026-01-01T10:00:00.000Z", 1);
+    expect(start.toISOString().slice(0, 10)).toBe("2026-01-01");
+  });
+
+  it("semana 3 começa 14 dias depois do onboarding", () => {
+    const start = getWeekStartDate("2026-01-01T10:00:00.000Z", 3);
+    expect(start.toISOString().slice(0, 10)).toBe("2026-01-15");
   });
 });
 

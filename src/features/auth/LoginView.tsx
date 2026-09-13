@@ -30,6 +30,9 @@ export function LoginView() {
       <span className="glow-text font-display text-4xl font-semibold tracking-tight text-accent">
         CONTA<span className="text-fg">kcal</span>
       </span>
+      <p className="mt-2 font-display text-xs font-semibold uppercase tracking-[0.2em] text-faint">
+        by @vixeluan
+      </p>
       <p className="mt-3 max-w-xs text-sm text-muted">
         Conte o que comeu em texto livre. A IA calcula, você foca no resultado.
       </p>

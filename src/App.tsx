@@ -5,9 +5,12 @@ import { MainApp } from '@/features/dashboard/MainApp'
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-1 bg-bg">
       <span className="glow-text font-display text-sm font-semibold uppercase tracking-[0.2em] text-accent">
         CONTAkcal
+      </span>
+      <span className="font-display text-[10px] font-semibold uppercase tracking-[0.2em] text-faint">
+        by @vixeluan
       </span>
     </div>
   )

@@ -29,7 +29,8 @@ export function WeekView() {
     if (!userDoc) return
     try {
       await deleteMeal(userDoc.uid, mealId)
-    } catch {
+    } catch (err) {
+      console.error('deleteMeal failed:', err)
       setError('Não foi possível remover. Tente novamente.')
     }
   }

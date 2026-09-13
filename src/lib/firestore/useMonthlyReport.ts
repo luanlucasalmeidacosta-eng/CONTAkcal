@@ -57,7 +57,8 @@ export function useMonthlyReport(
         if (!cancelled) {
           setWeeks(results);
         }
-      } catch {
+      } catch (err) {
+        console.error("useMonthlyReport failed:", err);
         if (!cancelled) setError("Não foi possível carregar o relatório mensal.");
       } finally {
         if (!cancelled) setLoading(false);

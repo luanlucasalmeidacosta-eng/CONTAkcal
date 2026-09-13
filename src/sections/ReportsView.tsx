@@ -70,7 +70,8 @@ export function ReportsView() {
       } ${stagnation.isStagnant ? 'Está em estagnação.' : ''}`
       const text = await generateSummary(prompt)
       setSummary(text)
-    } catch {
+    } catch (err) {
+      console.error('generateSummary failed:', err)
       setSummaryError('Não foi possível gerar o resumo agora.')
     } finally {
       setLoadingSummary(false)

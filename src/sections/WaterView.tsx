@@ -26,7 +26,8 @@ export function WaterView() {
     try {
       await addWaterLog(userDoc.uid, ml)
       setError(null)
-    } catch {
+    } catch (err) {
+      console.error('addWaterLog failed:', err)
       setError('Não foi possível registrar. Tente novamente.')
     }
   }
@@ -38,7 +39,8 @@ export function WaterView() {
       await addWaterLog(userDoc.uid, ml)
       setCustom('')
       setError(null)
-    } catch {
+    } catch (err) {
+      console.error('addWaterLog failed:', err)
       setError('Não foi possível registrar. Tente novamente.')
     }
   }
@@ -47,7 +49,8 @@ export function WaterView() {
     if (!userDoc) return
     try {
       await deleteWaterLog(userDoc.uid, logId)
-    } catch {
+    } catch (err) {
+      console.error('deleteWaterLog failed:', err)
       setError('Não foi possível remover. Tente novamente.')
     }
   }

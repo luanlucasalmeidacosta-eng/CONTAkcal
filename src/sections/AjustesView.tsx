@@ -53,7 +53,8 @@ export function AjustesView() {
     try {
       await applyStagnationAdjustment(userDoc.uid, userDoc.maintenanceCalorieGoal, userDoc.phaseState)
       setBumpSuccess(true)
-    } catch {
+    } catch (err) {
+      console.error('applyStagnationAdjustment failed:', err)
       setBumpError('Não foi possível aplicar o ajuste. Tente novamente.')
     } finally {
       setBumpSubmitting(false)
@@ -70,7 +71,8 @@ export function AjustesView() {
       setPeso('')
       setJejum(false)
       setSuccess(true)
-    } catch {
+    } catch (err) {
+      console.error('addWeighIn failed:', err)
       setError('Não foi possível registrar. Tente novamente.')
     } finally {
       setSubmitting(false)

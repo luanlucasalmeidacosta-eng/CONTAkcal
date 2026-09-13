@@ -102,7 +102,8 @@ export function OnboardingFlow() {
         adjustmentKcal: data.adjustmentKcal ?? 0,
         recompIntent: data.recompIntent,
       });
-    } catch {
+    } catch (err) {
+      console.error("completeOnboarding failed:", err);
       setError("Não foi possível salvar suas metas. Tente novamente.");
       setSubmitting(false);
     }

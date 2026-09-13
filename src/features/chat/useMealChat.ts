@@ -39,6 +39,7 @@ export function useMealChat() {
         throw new Error("Resposta da IA incompleta.");
       }
     } catch (err) {
+      console.error("parseMeal failed:", err);
       setError(err instanceof Error ? err.message : "Erro inesperado.");
       setPhase("error");
     }
@@ -87,6 +88,7 @@ export function useMealChat() {
       setError(null);
       setPhase("confirmed");
     } catch (err) {
+      console.error("confirm meal failed:", err);
       setError(err instanceof Error ? err.message : "Erro ao salvar a refeição.");
       setPhase("error");
     }

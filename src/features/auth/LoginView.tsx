@@ -13,7 +13,8 @@ export function LoginView() {
     setError(null);
     try {
       await login();
-    } catch {
+    } catch (err) {
+      console.error("login failed:", err);
       setError("Não foi possível entrar. Tente novamente.");
     } finally {
       setPending(false);

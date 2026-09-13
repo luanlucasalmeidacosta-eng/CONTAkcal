@@ -6,7 +6,8 @@ export interface PhaseState {
   phase: Phase;
   startedAt: string; // ISO date
   adjustmentKcal: number; // superávit/déficit em kcal, sempre positivo; 0 na manutenção
-  recompIntent?: RecompIntent;
+  /** null (não undefined) quando não aplicável — Firestore rejeita undefined em documentos. */
+  recompIntent?: RecompIntent | null;
   weeksStagnant: number;
   monthsStagnant: number;
   globalWeekIndex: number;

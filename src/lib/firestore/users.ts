@@ -73,7 +73,7 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
       phase: input.phase,
       startedAt: now,
       adjustmentKcal: input.adjustmentKcal,
-      recompIntent: input.recompIntent,
+      recompIntent: input.recompIntent ?? null,
       weeksStagnant: 0,
       monthsStagnant: 0,
       globalWeekIndex: 1,
@@ -109,7 +109,7 @@ export async function changePhase(
         phase: input.phase,
         startedAt: now,
         adjustmentKcal: input.adjustmentKcal,
-        recompIntent: input.recompIntent,
+        recompIntent: input.recompIntent ?? null,
         weeksStagnant: 0,
         monthsStagnant: 0,
         globalWeekIndex: 1,
@@ -136,7 +136,7 @@ export async function applyStagnationAdjustment(
   const dailyCalorieGoal = applyPhaseAdjustment(maintenanceCalorieGoal, {
     phase: currentPhaseState.phase,
     adjustmentKcal,
-    recompIntent: currentPhaseState.recompIntent,
+    recompIntent: currentPhaseState.recompIntent ?? undefined,
   });
 
   await setDoc(

@@ -55,7 +55,8 @@ export function PhaseChangeCard() {
       setSuccess(true)
       setOpen(false)
       reset()
-    } catch {
+    } catch (err) {
+      console.error('changePhase failed:', err)
       setError('Não foi possível trocar de fase. Tente novamente.')
     } finally {
       setSubmitting(false)

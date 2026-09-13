@@ -2,12 +2,14 @@ import { AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { completeOnboarding } from "@/lib/firestore/users";
-import { ActivityStep, AgeStep, HeightStep, SexStep, WeightStep } from "./PhysicalDataSteps";
+import { ActivityStep, AgeStep, HeightStep, NameStep, SexStep, WeightStep } from "./PhysicalDataSteps";
 import { AdjustmentStep, CalorieStep, PhaseStep, SummaryStep } from "./PhaseSteps";
 import type { OnboardingData, StepId } from "./types";
 
 function nextStepId(current: StepId, data: OnboardingData): StepId {
   switch (current) {
+    case "name":
+      return "weight";
     case "weight":
       return "height";
     case "height":
@@ -31,8 +33,10 @@ function nextStepId(current: StepId, data: OnboardingData): StepId {
 
 function previousStepId(current: StepId, data: OnboardingData): StepId | null {
   switch (current) {
-    case "weight":
+    case "name":
       return null;
+    case "weight":
+      return "name";
     case "height":
       return "weight";
     case "age":
@@ -54,7 +58,7 @@ function previousStepId(current: StepId, data: OnboardingData): StepId | null {
 
 export function OnboardingFlow() {
   const { firebaseUser } = useAuth();
-  const [stepStack, setStepStack] = useState<StepId[]>(["weight"]);
+  const [stepStack, setStepStack] = useState<StepId[]>(["name"]);
   const [data, setData] = useState<OnboardingData>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +96,7 @@ export function OnboardingFlow() {
     setError(null);
     try {
       await completeOnboarding(firebaseUser.uid, {
+        name: data.name,
         weightKg: data.weightKg,
         heightCm: data.heightCm,
         ageYears: data.ageYears,
@@ -113,6 +118,7 @@ export function OnboardingFlow() {
 
   return (
     <AnimatePresence mode="wait">
+      {currentStep === "name" && <NameStep key="name" {...stepProps} />}
       {currentStep === "weight" && <WeightStep key="weight" {...stepProps} />}
       {currentStep === "height" && <HeightStep key="height" {...stepProps} />}
       {currentStep === "age" && <AgeStep key="age" {...stepProps} />}

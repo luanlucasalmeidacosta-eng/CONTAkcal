@@ -11,6 +11,7 @@ import { deriveCarbGoal } from '@/lib/firestore/users'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 import { availableToday } from '@/lib/nutrition/week'
 import { buildPostMealFeedback } from '@/lib/nutrition/feedback'
+import { getGreeting } from '@/lib/nutrition/greeting'
 
 export function HomeView() {
   const { userDoc } = useAuth()
@@ -30,6 +31,8 @@ export function HomeView() {
   const availableCarbs = availableToday(carbGoal * 7, consumedPreviousDays.carbs, daysRemainingInWeek)
   const availableFat = availableToday(userDoc.fatGoal ?? 0, consumedPreviousDays.fat, daysRemainingInWeek)
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
+  const remainingToday = availableCalories - todayTotals.kcal
+  const greeting = userDoc.name ? `${getGreeting()}, ${userDoc.name}` : getGreeting()
 
   return (
     <motion.section
@@ -42,7 +45,7 @@ export function HomeView() {
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 id="greeting" className="font-display text-3xl font-semibold tracking-tight lg:text-4xl">
-            Bom dia
+            {greeting}
           </h1>
           <p className="tnum mt-1 text-sm text-muted">Semana {weekInfo.weekIndex} do protocolo</p>
         </div>
@@ -67,10 +70,13 @@ export function HomeView() {
               value={todayTotals.kcal}
               goal={availableCalories}
               label="Calorias"
-              sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} kcal · ${Math.round(availableCalories).toLocaleString('pt-BR')} disponíveis hoje`}
+              sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} de ${Math.round(availableCalories).toLocaleString('pt-BR')} kcal hoje`}
               size={132}
               stroke={10}
             />
+            <p className="tnum mt-2 text-center text-xs text-faint">
+              Restam <span className="font-semibold text-accent">{Math.round(remainingToday).toLocaleString('pt-BR')} kcal</span> disponíveis para hoje
+            </p>
           </div>
           <div className="mt-6 grid w-full grid-cols-2 gap-6">
             <div className="rounded-2xl border border-line bg-surface px-3 py-4">

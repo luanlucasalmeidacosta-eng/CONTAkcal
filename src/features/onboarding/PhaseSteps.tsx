@@ -22,8 +22,8 @@ export function CalorieStep({ data, advance, goBack }: StepProps) {
 
   return (
     <OnboardingShell
-      step={5}
-      totalSteps={7}
+      step={6}
+      totalSteps={8}
       title="Sua calórica de manutenção"
       subtitle="Estimativa pela fórmula DRI 2023. Você pode ajustar o valor se quiser."
       onBack={goBack}
@@ -43,7 +43,7 @@ export function PhaseStep({ data, advance, goBack }: StepProps) {
   const phases: Phase[] = ["manutencao", "bulking", "cutting", "recomposicao"];
 
   return (
-    <OnboardingShell step={6} totalSteps={7} title="Qual sua fase inicial?" onBack={goBack}>
+    <OnboardingShell step={7} totalSteps={8} title="Qual sua fase inicial?" onBack={goBack}>
       <div className="flex flex-col gap-3">
         {phases.map((phase) => (
           <ChoiceButton
@@ -71,8 +71,8 @@ export function AdjustmentStep({ data, advance, goBack }: StepProps) {
     ];
     return (
       <OnboardingShell
-        step={7}
-        totalSteps={8}
+        step={8}
+        totalSteps={9}
         title="Seu foco agora é perder gordura ou ganhar massa?"
         onBack={goBack}
       >
@@ -95,8 +95,8 @@ export function AdjustmentStep({ data, advance, goBack }: StepProps) {
 
   return (
     <OnboardingShell
-      step={7}
-      totalSteps={8}
+      step={8}
+      totalSteps={9}
       title={isBulking ? "Escolha o superávit calórico" : "Escolha o déficit calórico"}
       subtitle="Sugestões rápidas, ou digite qualquer valor."
       onBack={goBack}
@@ -157,8 +157,8 @@ export function SummaryStep({ data, goBack, onConfirm, submitting, error }: Summ
 
   return (
     <OnboardingShell
-      step={8}
-      totalSteps={9}
+      step={9}
+      totalSteps={10}
       title="Suas metas estão prontas"
       subtitle={PHASE_LABELS[data.phase]}
       onBack={goBack}

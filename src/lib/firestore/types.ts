@@ -21,6 +21,8 @@ export interface UserDoc {
   onboardingCompleted: boolean;
   /** Data de conclusão do onboarding — âncora fixa dos blocos semanais globais (nunca muda). */
   protocolStartedAt?: string;
+  /** Como o usuário quer ser chamado — usado na saudação da tela Hoje. */
+  name?: string | null;
 
   weightKg?: number;
   heightCm?: number;

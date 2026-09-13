@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
+import { WeeklyProteinChart } from '@/components/WeeklyProteinChart'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
 import { EditMealModal } from '@/features/meals/EditMealModal'
@@ -31,6 +32,7 @@ export function WeekView() {
 
   const selectedDayDate = new Date(weekInfo.weekStart.getTime() + (selectedDay - 1) * 24 * 60 * 60 * 1000)
   const isPastOrToday = selectedDay <= weekInfo.dayIndexInWeek
+  const remainingThisWeek = weeklyCalorieGoal - weekTotalsSoFar.kcal
 
   async function handleRemove(mealId: string) {
     if (!userDoc) return
@@ -85,6 +87,9 @@ export function WeekView() {
             stroke={12}
           />
           <p className="mt-3 text-xs text-faint">Progresso da semana</p>
+          <p className="tnum mt-1 text-xs text-faint">
+            Restam <span className="font-semibold text-accent">{Math.round(remainingThisWeek).toLocaleString('pt-BR')} kcal</span> disponíveis
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-1 lg:gap-6">
           <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-3 py-5">
@@ -109,6 +114,19 @@ export function WeekView() {
               stroke={9}
             />
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-line bg-surface p-4">
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.14em] text-faint">
+          Proteína na semana
+        </p>
+        <div className="mt-3">
+          <WeeklyProteinChart
+            mealsByDay={mealsByDay}
+            proteinGoal={userDoc.proteinGoal ?? 0}
+            currentDayIndex={weekInfo.dayIndexInWeek}
+          />
         </div>
       </div>
 

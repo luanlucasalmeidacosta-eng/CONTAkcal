@@ -34,6 +34,7 @@ export function subscribeToUserDoc(uid: string, callback: (user: UserDoc | null)
 }
 
 export interface OnboardingInput {
+  name?: string;
   weightKg: number;
   heightCm: number;
   ageYears: number;
@@ -58,6 +59,7 @@ export async function completeOnboarding(uid: string, input: OnboardingInput): P
 
   const update: Partial<UserDoc> = {
     protocolStartedAt: now,
+    name: input.name ?? null,
     weightKg: input.weightKg,
     heightCm: input.heightCm,
     ageYears: input.ageYears,

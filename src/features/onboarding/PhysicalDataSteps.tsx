@@ -3,13 +3,37 @@ import type { ActivityLevel, Sex } from "@/lib/nutrition/dri";
 import { ChoiceButton, NumberField, OnboardingShell, PrimaryButton } from "./OnboardingShell";
 import type { StepProps } from "./types";
 
+export function NameStep({ data, advance, goBack }: StepProps) {
+  const [value, setValue] = useState(data.name ?? "");
+  const valid = value.trim().length > 0;
+
+  return (
+    <OnboardingShell step={0} totalSteps={8} title="Como posso te chamar?" onBack={goBack}>
+      <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface px-5 py-4 focus-within:border-accent">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && valid && advance({ name: value.trim() })}
+          placeholder="Seu nome"
+          autoFocus
+          className="w-full bg-transparent font-display text-2xl font-semibold text-fg placeholder:text-faint focus:outline-none"
+        />
+      </div>
+      <PrimaryButton disabled={!valid} onClick={() => advance({ name: value.trim() })}>
+        Continuar
+      </PrimaryButton>
+    </OnboardingShell>
+  );
+}
+
 export function WeightStep({ data, advance, goBack }: StepProps) {
   const [value, setValue] = useState(data.weightKg?.toString() ?? "");
   const numeric = Number(value);
   const valid = value !== "" && numeric > 0;
 
   return (
-    <OnboardingShell step={0} totalSteps={7} title="Qual seu peso atual?" onBack={goBack}>
+    <OnboardingShell step={1} totalSteps={8} title="Qual seu peso atual?" onBack={goBack}>
       <NumberField value={value} onChange={setValue} unit="kg" placeholder="0" autoFocus />
       <PrimaryButton
         disabled={!valid}
@@ -27,7 +51,7 @@ export function HeightStep({ data, advance, goBack }: StepProps) {
   const valid = value !== "" && numeric > 0;
 
   return (
-    <OnboardingShell step={1} totalSteps={7} title="E sua altura?" onBack={goBack}>
+    <OnboardingShell step={2} totalSteps={8} title="E sua altura?" onBack={goBack}>
       <NumberField value={value} onChange={setValue} unit="cm" placeholder="0" autoFocus />
       <PrimaryButton
         disabled={!valid}
@@ -46,8 +70,8 @@ export function AgeStep({ data, advance, goBack }: StepProps) {
 
   return (
     <OnboardingShell
-      step={2}
-      totalSteps={7}
+      step={3}
+      totalSteps={8}
       title="Quantos anos você tem?"
       subtitle="O CONTAkcal usa fórmulas validadas para adultos (19 anos ou mais)."
       onBack={goBack}
@@ -74,8 +98,8 @@ export function SexStep({ data, advance, goBack }: StepProps) {
 
   return (
     <OnboardingShell
-      step={3}
-      totalSteps={7}
+      step={4}
+      totalSteps={8}
       title="Sexo biológico"
       subtitle="Usado apenas para a fórmula de estimativa energética (DRI 2023)."
       onBack={goBack}
@@ -104,7 +128,7 @@ export function ActivityStep({ data, advance, goBack }: StepProps) {
   ];
 
   return (
-    <OnboardingShell step={4} totalSteps={7} title="Nível de atividade física" onBack={goBack}>
+    <OnboardingShell step={5} totalSteps={8} title="Nível de atividade física" onBack={goBack}>
       <div className="flex flex-col gap-3">
         {options.map((opt) => (
           <ChoiceButton

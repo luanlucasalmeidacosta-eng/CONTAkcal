@@ -2,6 +2,7 @@ import type { ActivityLevel, Sex } from "@/lib/nutrition/dri";
 import type { Phase, RecompIntent } from "@/lib/nutrition/phase";
 
 export type StepId =
+  | "name"
   | "weight"
   | "height"
   | "age"
@@ -13,6 +14,7 @@ export type StepId =
   | "summary";
 
 export interface OnboardingData {
+  name?: string;
   weightKg?: number;
   heightCm?: number;
   ageYears?: number;

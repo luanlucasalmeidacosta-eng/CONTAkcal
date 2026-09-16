@@ -52,7 +52,7 @@ export function HomeView() {
     daysRemainingInWeek,
   )
   const availableCarbs = availableToday(carbGoal * 7, consumedPreviousDays.carbs, daysRemainingInWeek)
-  const availableFat = availableToday(userDoc.fatGoal ?? 0, consumedPreviousDays.fat, daysRemainingInWeek)
+  const availableFat = availableToday((userDoc.fatGoal ?? 0) * 7, consumedPreviousDays.fat, daysRemainingInWeek)
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
   const remainingToday = availableCalories - todayTotals.kcal
   const greeting = userDoc.name ? `${getGreeting()}, ${userDoc.name}` : getGreeting()

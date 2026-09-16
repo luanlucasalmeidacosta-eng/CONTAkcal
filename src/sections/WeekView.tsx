@@ -25,7 +25,7 @@ export function WeekView() {
   const carbGoal = deriveCarbGoal(userDoc)
   const weeklyCalorieGoal = (userDoc.dailyCalorieGoal ?? 0) * 7
   const weeklyCarbGoal = carbGoal * 7
-  const weeklyFatGoal = userDoc.fatGoal ?? 0
+  const weeklyFatGoal = (userDoc.fatGoal ?? 0) * 7
   const weeklyProteinGoal = (userDoc.proteinGoal ?? 0) * 7
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
   const selectedDayMeals = mealsByDay.get(selectedDay) ?? []

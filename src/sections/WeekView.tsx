@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
+import { LoadingBar } from '@/components/LoadingBar'
 import { WeeklyProteinChart } from '@/components/WeeklyProteinChart'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
@@ -27,6 +28,7 @@ export function WeekView() {
   const weeklyCalorieGoal = (userDoc.dailyCalorieGoal ?? 0) * 7
   const weeklyCarbGoal = carbGoal * 7
   const weeklyFatGoal = userDoc.fatGoal ?? 0
+  const weeklyProteinGoal = (userDoc.proteinGoal ?? 0) * 7
   const phaseLabel = userDoc.phaseState ? PHASE_LABELS[userDoc.phaseState.phase] : ''
   const selectedDayMeals = mealsByDay.get(selectedDay) ?? []
 
@@ -115,6 +117,15 @@ export function WeekView() {
             />
           </div>
         </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-line bg-surface p-4">
+        <LoadingBar
+          value={weekTotalsSoFar.protein}
+          goal={weeklyProteinGoal}
+          label="Proteína batida na semana"
+          sub={`${Math.round(weekTotalsSoFar.protein).toLocaleString('pt-BR')}g de ${Math.round(weeklyProteinGoal).toLocaleString('pt-BR')}g`}
+        />
       </div>
 
       <div className="mt-6 rounded-2xl border border-line bg-surface p-4">

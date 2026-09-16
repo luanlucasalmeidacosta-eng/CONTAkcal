@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Ring } from '@/components/Ring'
+import { WaterGlass } from '@/components/WaterGlass'
 import { IconWater } from '@/icons'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useWaterProgress } from '@/lib/firestore/useWaterProgress'
@@ -84,15 +84,11 @@ export function WaterView() {
       </header>
 
       <div className="mt-10 flex flex-col items-center">
-        <Ring
-          animateKey={9}
+        <WaterGlass
           value={todayTotalMl}
           goal={goal}
           label="Água"
           sub={`${todayTotalMl.toLocaleString('pt-BR')}ml de ${goal.toLocaleString('pt-BR')}ml`}
-          size={216}
-          stroke={14}
-          emphasized
         />
 
         <div className="mt-8 flex w-full gap-2">

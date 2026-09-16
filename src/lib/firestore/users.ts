@@ -1,4 +1,4 @@
-import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { calculateCarbGoal, calculateDerivedGoals, type ActivityLevel, type Sex } from "@/lib/nutrition/dri";
 import { applyPhaseAdjustment, applyStagnationBump, type Phase, type RecompIntent } from "@/lib/nutrition/phase";
@@ -170,6 +170,30 @@ export async function applyStagnationAdjustment(
     },
     { merge: true },
   );
+}
+
+const RESETTABLE_SUBCOLLECTIONS = ["meals", "water_logs", "weigh_ins", "dishes", "aiUsage"];
+
+async function clearSubcollection(uid: string, name: string): Promise<void> {
+  const snap = await getDocs(collection(db, "users", uid, name));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+}
+
+/**
+ * Reset total do protocolo (spec: usuário pode recomeçar do zero). Apaga todo
+ * o histórico (refeições, água, pesagens, pratos salvos, uso diário de IA) e
+ * devolve o usuário para o onboarding, mantendo apenas uid/email/createdAt.
+ */
+export async function resetProtocol(uid: string, email: string | null): Promise<void> {
+  await Promise.all(RESETTABLE_SUBCOLLECTIONS.map((name) => clearSubcollection(uid, name)));
+
+  const resetDoc: UserDoc = {
+    uid,
+    email,
+    createdAt: serverTimestamp(),
+    onboardingCompleted: false,
+  };
+  await setDoc(userRef(uid), resetDoc);
 }
 
 export function deriveCarbGoal(user: UserDoc): number {

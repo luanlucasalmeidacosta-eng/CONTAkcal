@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/AuthContext'
 import { PhaseChangeCard } from '@/features/phase/PhaseChangeCard'
 import { addWeighIn, subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
-import { applyStagnationAdjustment } from '@/lib/firestore/users'
+import { applyStagnationAdjustment, resetProtocol } from '@/lib/firestore/users'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
 import { PHASE_LABELS, STAGNATION_ADJUSTMENT_KCAL } from '@/lib/nutrition/phase'
 import type { WeighInType } from '@/lib/firestore/types'
@@ -30,6 +30,9 @@ export function AjustesView() {
   const [bumpSubmitting, setBumpSubmitting] = useState(false)
   const [bumpError, setBumpError] = useState<string | null>(null)
   const [bumpSuccess, setBumpSuccess] = useState(false)
+  const [resetStep, setResetStep] = useState<'idle' | 'confirm1' | 'confirm2'>('idle')
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userDoc?.uid) return
@@ -69,6 +72,20 @@ export function AjustesView() {
       setBumpError('Não foi possível aplicar o ajuste. Tente novamente.')
     } finally {
       setBumpSubmitting(false)
+    }
+  }
+
+  async function handleResetProtocol() {
+    if (!userDoc) return
+    setResetting(true)
+    setResetError(null)
+    try {
+      await resetProtocol(userDoc.uid, userDoc.email)
+    } catch (err) {
+      console.error('resetProtocol failed:', err)
+      setResetError('Não foi possível resetar. Tente novamente.')
+      setResetting(false)
+      setResetStep('idle')
     }
   }
 
@@ -226,6 +243,80 @@ export function AjustesView() {
       )}
 
       <PhaseChangeCard />
+
+      <div className="mt-6 rounded-2xl border border-accent-soft/40 bg-surface p-4">
+        <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-accent-soft">
+          Zona de risco
+        </p>
+
+        {resetStep === 'idle' && (
+          <>
+            <p className="mt-2 text-xs text-faint">
+              Apaga todo o histórico (refeições, água, pesagens, fases) e devolve você para o onboarding.
+            </p>
+            <button
+              type="button"
+              onClick={() => setResetStep('confirm1')}
+              className="mt-3 min-h-[44px] w-full rounded-xl border border-accent-soft/40 font-display text-xs font-semibold uppercase tracking-[0.14em] text-accent-soft transition-colors duration-200 hover:bg-accent-soft/10"
+            >
+              Resetar todo o protocolo
+            </button>
+          </>
+        )}
+
+        {resetStep === 'confirm1' && (
+          <>
+            <p className="mt-2 text-sm text-fg">
+              Você realmente quer resetar? Todo o seu histórico de refeições, água, pesagens e fases será apagado
+              permanentemente.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setResetStep('idle')}
+                className="min-h-[44px] flex-1 rounded-xl border border-line font-display text-xs font-semibold uppercase tracking-[0.14em] text-muted"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetStep('confirm2')}
+                className="min-h-[44px] flex-1 rounded-xl border border-accent-soft/40 bg-accent-soft/10 font-display text-xs font-semibold uppercase tracking-[0.14em] text-accent-soft"
+              >
+                Sim, continuar
+              </button>
+            </div>
+          </>
+        )}
+
+        {resetStep === 'confirm2' && (
+          <>
+            <p className="mt-2 text-sm text-fg">
+              Última confirmação: essa ação não pode ser desfeita. Resetar mesmo assim?
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={() => setResetStep('idle')}
+                className="min-h-[44px] flex-1 rounded-xl border border-line font-display text-xs font-semibold uppercase tracking-[0.14em] text-muted disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={resetting}
+                onClick={handleResetProtocol}
+                className="min-h-[44px] flex-1 rounded-xl bg-accent-soft font-display text-xs font-semibold uppercase tracking-[0.14em] text-bg disabled:opacity-50"
+              >
+                {resetting ? 'Resetando…' : 'Sim, resetar tudo'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {resetError && <p className="mt-3 text-xs text-accent-soft">{resetError}</p>}
+      </div>
 
       <button
         type="button"

@@ -7,7 +7,6 @@ import { WeeklyProteinChart } from '@/components/WeeklyProteinChart'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
 import { EditMealModal } from '@/features/meals/EditMealModal'
-import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
 import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
 import { deleteMeal, type MealWithId } from '@/lib/firestore/meals'
@@ -15,7 +14,6 @@ import { PHASE_LABELS } from '@/lib/nutrition/phase'
 
 export function WeekView() {
   const { userDoc } = useAuth()
-  const todayTotals = useTodayTotals(userDoc?.uid)
   const { weekInfo, mealsByDay, weekTotalsSoFar } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
   const [selectedDay, setSelectedDay] = useState(weekInfo.dayIndexInWeek)
   const [error, setError] = useState<string | null>(null)
@@ -64,20 +62,7 @@ export function WeekView() {
         {phaseLabel && <PhaseChip phase={phaseLabel} />}
       </header>
 
-      <div className="mt-10 grid gap-6 lg:mt-14 lg:grid-cols-3 lg:items-start">
-        <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-4 py-6">
-          <Ring
-            animateKey={5}
-            value={todayTotals.protein}
-            goal={userDoc.proteinGoal ?? 0}
-            label="Proteína"
-            sub={`${Math.round(todayTotals.protein)}g de ${userDoc.proteinGoal ?? 0}g`}
-            size={168}
-            stroke={12}
-            emphasized
-          />
-          <p className="mt-3 text-xs text-faint">Meta diária</p>
-        </div>
+      <div className="mt-10 grid gap-6 lg:mt-14 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-4 py-6">
           <Ring
             animateKey={6}

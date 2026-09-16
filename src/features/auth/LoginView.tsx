@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { IconGoogle } from "@/icons";
+import { AnimatedMealIcon } from "@/components/AnimatedMealIcon";
 import { useAuth } from "./AuthContext";
 
 export function LoginView() {
@@ -28,7 +29,10 @@ export function LoginView() {
       transition={{ duration: 0.45, ease: "easeOut" }}
       className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-6 text-center"
     >
-      <span className="glow-text font-display text-4xl font-semibold tracking-tight text-accent">
+      <div className="glow-ring flex h-16 w-16 items-center justify-center rounded-3xl border border-accent/40 bg-accent/10">
+        <AnimatedMealIcon size={30} className="text-accent" />
+      </div>
+      <span className="glow-text mt-4 font-display text-4xl font-semibold tracking-tight text-accent">
         CONTA<span className="text-fg">kcal</span>
       </span>
       <p className="mt-2 font-display text-xs font-semibold uppercase tracking-[0.2em] text-faint">

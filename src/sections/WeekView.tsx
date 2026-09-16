@@ -99,6 +99,7 @@ export function WeekView() {
               sub={`${Math.round(weekTotalsSoFar.fat).toLocaleString('pt-BR')}g de ${weeklyFatGoal.toLocaleString('pt-BR')}g`}
               size={104}
               stroke={9}
+              excessLabel="Quantidade de gordura excedida"
             />
           </div>
         </div>

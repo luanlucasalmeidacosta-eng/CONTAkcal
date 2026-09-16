@@ -10,6 +10,12 @@ type RingProps = {
   emphasized?: boolean
   color?: string
   animateKey?: number
+  /**
+   * Quando definido, no excesso (valor > meta) o número da porcentagem some do
+   * centro do gráfico, esse texto aparece em cima dele, e a gramatura
+   * excedida aparece abaixo da legenda de gramatura consumida.
+   */
+  excessLabel?: string
 }
 
 export function Ring({
@@ -22,12 +28,14 @@ export function Ring({
   emphasized = false,
   color = 'var(--color-accent)',
   animateKey = 0,
+  excessLabel,
 }: RingProps) {
   const reduced = useReducedMotion()
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const pct = goal > 0 ? Math.min(value / goal, 1) : 0
   const over = goal > 0 && value > goal
+  const showExcessLabel = over && !!excessLabel
   const display = Math.round((value / goal) * 100)
 
   return (
@@ -39,6 +47,11 @@ export function Ring({
       className={`m-0 flex flex-col items-center ${emphasized ? 'glow-ring' : ''}`}
       style={{ width: size }}
     >
+      {showExcessLabel && (
+        <p className="mb-2 max-w-[90%] text-center font-display text-[10px] font-semibold uppercase leading-tight tracking-[0.1em] text-accent-soft">
+          {excessLabel}
+        </p>
+      )}
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <circle
           cx={size / 2}
@@ -62,19 +75,21 @@ export function Ring({
           transition={{ duration: reduced ? 0.01 : 0.9, ease: [0.22, 1, 0.36, 1] }}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
-        <text
-          x="50%"
-          y="47%"
-          textAnchor="middle"
-          dominantBaseline="central"
-          className="tnum font-display"
-          fill="var(--color-fg)"
-          fontSize={emphasized ? size * 0.24 : size * 0.2}
-          fontWeight={600}
-        >
-          {display}%
-        </text>
-        {over && (
+        {!showExcessLabel && (
+          <text
+            x="50%"
+            y="47%"
+            textAnchor="middle"
+            dominantBaseline="central"
+            className="tnum font-display"
+            fill="var(--color-fg)"
+            fontSize={emphasized ? size * 0.24 : size * 0.2}
+            fontWeight={600}
+          >
+            {display}%
+          </text>
+        )}
+        {over && !excessLabel && (
           <text
             x="50%"
             y="66%"
@@ -99,6 +114,11 @@ export function Ring({
         <span className="tnum mt-1 block text-xs" style={{ color: 'var(--color-faint)' }}>
           {sub}
         </span>
+        {showExcessLabel && (
+          <span className="tnum mt-1 block text-xs font-semibold" style={{ color: 'var(--color-accent-soft)' }}>
+            excedeu {Math.round(value - goal)}g
+          </span>
+        )}
       </figcaption>
     </motion.figure>
   )

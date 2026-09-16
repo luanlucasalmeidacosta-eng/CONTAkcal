@@ -126,6 +126,7 @@ export function HomeView() {
                 sub={`${Math.round(todayTotals.fat)}g de ${Math.round(availableFat)}g hoje`}
                 size={96}
                 stroke={8}
+                excessLabel="Quantidade de gordura excedida"
               />
             </div>
           </div>

@@ -6,9 +6,11 @@ import { LoadingBar } from '@/components/LoadingBar'
 import { IconMealPlate } from '@/icons'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
+import { EditMealModal } from '@/features/meals/EditMealModal'
 import { useTodayTotals } from '@/lib/firestore/useTodayTotals'
 import { useWeekProgress } from '@/lib/firestore/useWeekProgress'
 import { deriveCarbGoal } from '@/lib/firestore/users'
+import { deleteMeal, subscribeTodayMeals, type MealWithId } from '@/lib/firestore/meals'
 import { subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
 import { PHASE_LABELS } from '@/lib/nutrition/phase'
 import { availableToday } from '@/lib/nutrition/week'
@@ -26,10 +28,18 @@ export function HomeView() {
   const { weekInfo, consumedPreviousDays } = useWeekProgress(userDoc?.uid, userDoc?.protocolStartedAt)
   const [chatOpen, setChatOpen] = useState(false)
   const [weighIns, setWeighIns] = useState<WeighInWithId[]>([])
+  const [todayMeals, setTodayMeals] = useState<MealWithId[]>([])
+  const [editingMeal, setEditingMeal] = useState<MealWithId | null>(null)
+  const [mealError, setMealError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userDoc?.uid) return
     return subscribeWeighIns(userDoc.uid, setWeighIns)
+  }, [userDoc?.uid])
+
+  useEffect(() => {
+    if (!userDoc?.uid) return
+    return subscribeTodayMeals(userDoc.uid, setTodayMeals)
   }, [userDoc?.uid])
 
   if (!userDoc) return null
@@ -51,6 +61,16 @@ export function HomeView() {
     weighIns.map((w) => ({ tipo: w.tipo, createdAt: toDate(w.createdAt) })),
     weekInfo.weekStart,
   )
+
+  async function handleRemoveMeal(mealId: string) {
+    if (!userDoc) return
+    try {
+      await deleteMeal(userDoc.uid, mealId)
+    } catch (err) {
+      console.error('deleteMeal failed:', err)
+      setMealError('Não foi possível remover. Tente novamente.')
+    }
+  }
 
   return (
     <motion.section
@@ -149,6 +169,43 @@ export function HomeView() {
         </div>
       </div>
 
+      <section className="mt-10 lg:mt-14" aria-label="Refeições de hoje">
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.14em] text-faint">
+          Refeições de hoje
+        </p>
+        <div className="mt-3 rounded-2xl border border-line bg-surface p-3">
+          {todayMeals.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-faint">Nenhuma refeição registrada hoje.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {todayMeals.map((meal) => (
+                <li
+                  key={meal.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setEditingMeal(meal)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <p className="truncate text-sm text-fg">{meal.dishName ?? meal.rawText}</p>
+                    <p className="tnum text-xs text-faint">{Math.round(meal.totals.kcal)} kcal · editar</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveMeal(meal.id)}
+                    className="shrink-0 text-xs text-faint hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {mealError && <p className="mt-2 text-xs text-accent-soft">{mealError}</p>}
+        </div>
+      </section>
+
       <MealChatModal
         open={chatOpen}
         onClose={() => setChatOpen(false)}
@@ -163,6 +220,10 @@ export function HomeView() {
           })
         }
       />
+
+      {editingMeal && (
+        <EditMealModal uid={userDoc.uid} meal={editingMeal} onClose={() => setEditingMeal(null)} />
+      )}
     </motion.section>
   )
 }

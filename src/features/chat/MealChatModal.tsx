@@ -4,6 +4,7 @@ import { useMealChat } from './useMealChat'
 import { MealConfirmCard } from './MealConfirmCard'
 import { IconMealPlate } from '@/icons'
 import type { MealItem, MealTotals } from '@/lib/firestore/types'
+import { DAILY_AI_MESSAGE_LIMIT } from '@/lib/firestore/aiUsage'
 
 interface MealChatModalProps {
   open: boolean
@@ -79,6 +80,8 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
 
   const isSaving = chat.phase === 'saving'
   const isLoading = chat.phase === 'loading'
+  const remainingMessages = Math.max(0, DAILY_AI_MESSAGE_LIMIT - chat.messageCount)
+  const showLimitWarning = remainingMessages <= 5 && remainingMessages > 0
 
   return (
     <AnimatePresence>
@@ -159,20 +162,31 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
             {chat.phase === 'error' && chat.error && <Bubble role="assistant">{chat.error}</Bubble>}
           </div>
 
+          {chat.limitReached && (
+            <p className="px-4 pb-2 text-center text-xs text-accent-soft">
+              Limite de {DAILY_AI_MESSAGE_LIMIT} mensagens de IA hoje atingido. Volte amanhã para continuar registrando com o chat.
+            </p>
+          )}
+          {!chat.limitReached && showLimitWarning && (
+            <p className="px-4 pb-2 text-center text-xs text-faint">
+              Restam {remainingMessages} mensagens de IA hoje.
+            </p>
+          )}
+
           <div className="flex gap-2 border-t border-line p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
             <input
               type="text"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Digite sua mensagem…"
-              disabled={isLoading}
-              className="min-h-[48px] flex-1 rounded-full border border-line bg-surface px-4 text-base text-fg placeholder:text-faint focus:border-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-accent"
+              placeholder={chat.limitReached ? 'Limite diário atingido' : 'Digite sua mensagem…'}
+              disabled={isLoading || chat.limitReached}
+              className="min-h-[48px] flex-1 rounded-full border border-line bg-surface px-4 text-base text-fg placeholder:text-faint focus:border-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
             />
             <button
               type="button"
               onClick={handleSend}
-              disabled={isLoading || !draft.trim()}
+              disabled={isLoading || !draft.trim() || chat.limitReached}
               aria-label="Enviar"
               className="flex min-h-[48px] min-w-[48px] items-center justify-center rounded-full bg-accent text-bg transition-opacity duration-200 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
             >

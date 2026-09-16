@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth/AuthContext";
 import { getDishLibrary, upsertDish } from "@/lib/firestore/dishes";
 import { addMeal } from "@/lib/firestore/meals";
 import type { MealItem, MealTotals } from "@/lib/firestore/types";
 import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
+import { DAILY_AI_MESSAGE_LIMIT, incrementAiMessageCount, subscribeAiMessageCount } from "@/lib/firestore/aiUsage";
 
 type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
 
@@ -21,12 +22,26 @@ export function useMealChat(targetDate?: Date) {
   const [items, setItems] = useState<MealItem[] | null>(null);
   const [totals, setTotals] = useState<MealTotals | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [messageCount, setMessageCount] = useState(0);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    return subscribeAiMessageCount(firebaseUser.uid, setMessageCount);
+  }, [firebaseUser]);
+
+  const limitReached = messageCount >= DAILY_AI_MESSAGE_LIMIT;
 
   async function runTurn(nextHistory: ConversationTurn[]) {
     if (!firebaseUser) return;
+    if (limitReached) {
+      setError(`Você atingiu o limite de ${DAILY_AI_MESSAGE_LIMIT} mensagens de IA hoje. Tente novamente amanhã.`);
+      setPhase("error");
+      return;
+    }
     setPhase("loading");
     setError(null);
     try {
+      await incrementAiMessageCount(firebaseUser.uid);
       const library = await getDishLibrary(firebaseUser.uid).catch(() => []);
       const result = await parseMeal(nextHistory, library);
       setHistory([...nextHistory, { role: "model", text: JSON.stringify(result) }]);
@@ -108,5 +123,17 @@ export function useMealChat(targetDate?: Date) {
     setError(null);
   }
 
-  return { phase, messages, dishName, items, totals, error, sendMessage, confirm, reset };
+  return {
+    phase,
+    messages,
+    dishName,
+    items,
+    totals,
+    error,
+    sendMessage,
+    confirm,
+    reset,
+    messageCount,
+    limitReached,
+  };
 }

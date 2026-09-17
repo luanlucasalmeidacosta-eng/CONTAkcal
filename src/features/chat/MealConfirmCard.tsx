@@ -9,6 +9,21 @@ interface MealConfirmCardProps {
   onAdjust: () => void;
 }
 
+function numberField(value: number, onChange: (v: number) => void, label: string) {
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-[9px] uppercase tracking-wider text-faint">{label}</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className="tnum min-h-[32px] rounded-lg border border-line bg-surface-2 px-2 text-xs text-fg focus:border-accent focus:outline-none"
+      />
+    </label>
+  );
+}
+
 export function MealConfirmCard({
   items,
   suggestedDishName,
@@ -18,7 +33,12 @@ export function MealConfirmCard({
 }: MealConfirmCardProps) {
   const [localItems, setLocalItems] = useState(items);
   const [dishName, setDishName] = useState(suggestedDishName ?? "");
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const isComposedDish = items.length > 1;
+
+  function updateItem(index: number, patch: Partial<MealItem>) {
+    setLocalItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
 
   function removeItem(index: number) {
     setLocalItems((prev) => prev.filter((_, i) => i !== index));
@@ -41,29 +61,53 @@ export function MealConfirmCard({
       </p>
 
       <div className="mt-3 flex flex-col gap-2">
-        {localItems.map((item, index) => (
-          <div
-            key={`${item.name}-${index}`}
-            className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm text-fg">{item.name}</p>
-              <p className="tnum text-xs text-faint">
-                {item.quantity} · {Math.round(item.kcal)} kcal
-              </p>
+        {localItems.map((item, index) => {
+          const expanded = expandedIndex === index
+          return (
+            <div key={`${item.name}-${index}`} className="rounded-xl border border-line bg-bg px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExpandedIndex(expanded ? null : index)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate text-sm text-fg">{item.name}</p>
+                  <p className="tnum text-xs text-faint">
+                    {item.quantity} · {Math.round(item.kcal)} kcal · {expanded ? 'fechar' : 'ajustar gramas'}
+                  </p>
+                </button>
+                {localItems.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    aria-label={`Remover ${item.name}`}
+                    className="shrink-0 text-xs text-faint hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    remover
+                  </button>
+                )}
+              </div>
+
+              {expanded && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={item.quantity}
+                    onChange={(e) => updateItem(index, { quantity: e.target.value })}
+                    placeholder="Quantidade (ex: 150g)"
+                    className="mb-2 w-full rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-xs text-fg focus:border-accent focus:outline-none"
+                  />
+                  <div className="grid grid-cols-4 gap-2">
+                    {numberField(item.kcal, (v) => updateItem(index, { kcal: v }), 'kcal')}
+                    {numberField(item.protein, (v) => updateItem(index, { protein: v }), 'prot')}
+                    {numberField(item.carbs, (v) => updateItem(index, { carbs: v }), 'carbo')}
+                    {numberField(item.fat, (v) => updateItem(index, { fat: v }), 'gord')}
+                  </div>
+                </div>
+              )}
             </div>
-            {localItems.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeItem(index)}
-                aria-label={`Remover ${item.name}`}
-                className="shrink-0 text-xs text-faint hover:text-accent-soft focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                remover
-              </button>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {isComposedDish && (

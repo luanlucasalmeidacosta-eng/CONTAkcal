@@ -2,8 +2,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMealChat } from './useMealChat'
 import { MealConfirmCard } from './MealConfirmCard'
-import { IconMealPlate } from '@/icons'
-import type { MealItem, MealTotals } from '@/lib/firestore/types'
+import { IconMealPlate, IconBook } from '@/icons'
+import { useAuth } from '@/features/auth/AuthContext'
+import { getDishLibrary } from '@/lib/firestore/dishes'
+import type { MealItem, MealTotals, StandardDishDoc } from '@/lib/firestore/types'
 import { DAILY_AI_MESSAGE_LIMIT } from '@/lib/firestore/aiUsage'
 
 interface MealChatModalProps {
@@ -51,14 +53,33 @@ function TypingBubble() {
 }
 
 export function MealChatModal({ open, onClose, title, targetDate, renderConfirmedFeedback }: MealChatModalProps) {
+  const { firebaseUser } = useAuth()
   const chat = useMealChat(targetDate)
   const [draft, setDraft] = useState('')
   const [lastConfirmed, setLastConfirmed] = useState<{ items: MealItem[]; totals: MealTotals } | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [libraryDishes, setLibraryDishes] = useState<StandardDishDoc[] | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [chat.messages, chat.phase])
+
+  async function openLibrary() {
+    setLibraryOpen(true)
+    if (!firebaseUser || libraryDishes) return
+    try {
+      setLibraryDishes(await getDishLibrary(firebaseUser.uid))
+    } catch (err) {
+      console.error('getDishLibrary failed:', err)
+      setLibraryDishes([])
+    }
+  }
+
+  function pickLibraryVariant(dish: StandardDishDoc, variant: StandardDishDoc['variantes'][number]) {
+    chat.useLibraryItem(variant.items, dish.nome, variant.label)
+    setLibraryOpen(false)
+  }
 
   function handleSend() {
     if (!draft.trim()) return
@@ -76,6 +97,7 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
     chat.reset()
     setDraft('')
     setLastConfirmed(null)
+    setLibraryOpen(false)
   }
 
   const isSaving = chat.phase === 'saving'
@@ -173,7 +195,78 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
             </p>
           )}
 
-          <div className="flex gap-2 border-t border-line p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+          <AnimatePresence>
+            {libraryOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden border-t border-line"
+              >
+                <div className="max-h-56 overflow-y-auto p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="font-display text-xs font-semibold uppercase tracking-[0.14em] text-accent">
+                      Minha dieta ajustada
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setLibraryOpen(false)}
+                      className="text-xs text-faint hover:text-fg"
+                    >
+                      fechar
+                    </button>
+                  </div>
+
+                  {libraryDishes === null && <p className="py-3 text-center text-xs text-faint">Carregando…</p>}
+                  {libraryDishes?.length === 0 && (
+                    <p className="py-3 text-center text-xs text-faint">
+                      Nenhuma receita salva ainda. Cadastre em Ajustes → Minha Dieta Ajustada.
+                    </p>
+                  )}
+                  <div className="flex flex-col gap-2">
+                    {libraryDishes?.map((dish) =>
+                      dish.variantes.map((variant) => {
+                        const kcal = variant.items.reduce((acc, i) => acc + i.kcal, 0)
+                        return (
+                          <button
+                            key={`${dish.nome}-${variant.label}`}
+                            type="button"
+                            onClick={() => pickLibraryVariant(dish, variant)}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2 text-left transition-colors duration-200 hover:border-accent/60"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm text-fg">{dish.nome}</p>
+                              <p className="tnum text-xs text-faint">
+                                {variant.label} · {Math.round(kcal)} kcal
+                              </p>
+                            </div>
+                          </button>
+                        )
+                      }),
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex items-center gap-2 border-t border-line px-3 pt-2">
+            <button
+              type="button"
+              onClick={() => (libraryOpen ? setLibraryOpen(false) : openLibrary())}
+              aria-pressed={libraryOpen}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors duration-200 ${
+                libraryOpen
+                  ? 'border-accent bg-accent/10 text-accent'
+                  : 'border-line text-muted hover:border-accent/60 hover:text-fg'
+              }`}
+            >
+              <IconBook size={14} />
+              Minha biblioteca
+            </button>
+          </div>
+
+          <div className="flex gap-2 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
             <input
               type="text"
               value={draft}

@@ -23,6 +23,7 @@ export function useMealChat(targetDate?: Date) {
   const [totals, setTotals] = useState<MealTotals | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [messageCount, setMessageCount] = useState(0);
+  const [sourceVariantLabel, setSourceVariantLabel] = useState<string | undefined>();
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -71,13 +72,39 @@ export function useMealChat(targetDate?: Date) {
     void runTurn([...history, { role: "user", text: trimmed }]);
   }
 
+  /**
+   * Carrega um item já cadastrado na biblioteca (Minha Dieta Ajustada) direto
+   * pra confirmação, sem chamar a IA — só resta ajustar a gramatura antes de
+   * confirmar, já que a porção pode variar de uma refeição pra outra.
+   */
+  function useLibraryItem(libraryItems: MealItem[], libraryDishName: string, variantLabel: string) {
+    setMessages((prev) => [...prev, { role: "user", text: `Usar da biblioteca: ${libraryDishName}` }]);
+    setDishName(libraryDishName);
+    setItems(libraryItems);
+    setTotals(
+      libraryItems.reduce(
+        (acc, item) => ({
+          kcal: acc.kcal + item.kcal,
+          protein: acc.protein + item.protein,
+          carbs: acc.carbs + item.carbs,
+          fat: acc.fat + item.fat,
+        }),
+        { kcal: 0, protein: 0, carbs: 0, fat: 0 },
+      ),
+    );
+    setSourceVariantLabel(variantLabel);
+    setError(null);
+    setPhase("ready");
+  }
+
   async function confirm(finalItems: MealItem[], finalDishName: string | undefined) {
     if (!firebaseUser || !totals) return;
     setPhase("saving");
-    const rawText = history
-      .filter((turn) => turn.role === "user")
-      .map((turn) => turn.text)
-      .join(" — ");
+    const rawText =
+      history
+        .filter((turn) => turn.role === "user")
+        .map((turn) => turn.text)
+        .join(" — ") || finalDishName || "Refeição da biblioteca";
     try {
       const recalculatedTotals: MealTotals = finalItems.reduce(
         (acc, item) => ({
@@ -98,13 +125,14 @@ export function useMealChat(targetDate?: Date) {
       });
 
       if (finalDishName && finalItems.length > 1) {
-        await upsertDish(firebaseUser.uid, finalDishName, "padrão", finalItems);
+        await upsertDish(firebaseUser.uid, finalDishName, sourceVariantLabel ?? "padrão", finalItems);
       }
 
       setHistory([]);
       setItems(null);
       setTotals(null);
       setError(null);
+      setSourceVariantLabel(undefined);
       setPhase("confirmed");
     } catch (err) {
       console.error("confirm meal failed:", err);
@@ -121,6 +149,7 @@ export function useMealChat(targetDate?: Date) {
     setItems(null);
     setTotals(null);
     setError(null);
+    setSourceVariantLabel(undefined);
   }
 
   return {
@@ -135,5 +164,6 @@ export function useMealChat(targetDate?: Date) {
     reset,
     messageCount,
     limitReached,
+    useLibraryItem,
   };
 }

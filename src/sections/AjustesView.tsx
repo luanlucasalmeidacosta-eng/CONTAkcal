@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/AuthContext'
 import { PhaseChangeCard } from '@/features/phase/PhaseChangeCard'
+import { DietLibraryCard } from '@/features/dietLibrary/DietLibraryCard'
 import { addWeighIn, subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
 import { applyStagnationAdjustment, resetProtocol } from '@/lib/firestore/users'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
@@ -243,6 +244,8 @@ export function AjustesView() {
       )}
 
       <PhaseChangeCard />
+
+      <DietLibraryCard />
 
       <div className="mt-6 rounded-2xl border border-accent-soft/40 bg-surface p-4">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-accent-soft">

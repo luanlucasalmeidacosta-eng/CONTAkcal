@@ -91,6 +91,15 @@ export function IconMealPlate(props: IconProps) {
   ))
 }
 
+export function IconBook(props: IconProps) {
+  return base(props, (
+    <>
+      <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z" />
+      <path d="M4 19a2.5 2.5 0 0 1 2.5-2.5H20" />
+    </>
+  ))
+}
+
 export function IconSpark(props: IconProps) {
   return base({ strokeWidth: 1.5, ...props }, (
     <>

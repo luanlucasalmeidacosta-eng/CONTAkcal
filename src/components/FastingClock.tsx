@@ -1,11 +1,34 @@
 import { motion, useReducedMotion } from 'framer-motion'
-import { IconMealPlate } from '@/icons'
 
 type FastingClockProps = {
   pct: number
   remainingLabel: string
   subLabel: string
   size?: number
+}
+
+/** Reloginho decorativo cujos ponteiros são um garfo (minutos) e uma faca (horas). */
+function ForkKnifeClockBadge() {
+  return (
+    <svg width={34} height={34} viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="15" fill="none" stroke="var(--color-accent)" strokeWidth={2} />
+      <line x1="20" y1="6.5" x2="20" y2="9.5" stroke="var(--color-line)" strokeWidth={2} strokeLinecap="round" />
+      <line x1="33.5" y1="20" x2="30.5" y2="20" stroke="var(--color-line)" strokeWidth={2} strokeLinecap="round" />
+      <line x1="20" y1="33.5" x2="20" y2="30.5" stroke="var(--color-line)" strokeWidth={2} strokeLinecap="round" />
+      <line x1="6.5" y1="20" x2="9.5" y2="20" stroke="var(--color-line)" strokeWidth={2} strokeLinecap="round" />
+
+      {/* faca — ponteiro das horas */}
+      <line x1="20" y1="20" x2="12.2" y2="15.5" stroke="var(--color-accent)" strokeWidth={2.4} strokeLinecap="round" />
+
+      {/* garfo — ponteiro dos minutos */}
+      <line x1="20" y1="20" x2="26.9" y2="16" stroke="var(--color-accent)" strokeWidth={1.8} strokeLinecap="round" />
+      <line x1="26.9" y1="16" x2="31.1" y2="11.7" stroke="var(--color-accent)" strokeWidth={1.4} strokeLinecap="round" />
+      <line x1="26.9" y1="16" x2="32.1" y2="13" stroke="var(--color-accent)" strokeWidth={1.4} strokeLinecap="round" />
+      <line x1="26.9" y1="16" x2="32.7" y2="14.55" stroke="var(--color-accent)" strokeWidth={1.4} strokeLinecap="round" />
+
+      <circle cx="20" cy="20" r="1.8" fill="var(--color-accent)" />
+    </svg>
+  )
 }
 
 export function FastingClock({ pct, remainingLabel, subLabel, size = 240 }: FastingClockProps) {
@@ -17,10 +40,10 @@ export function FastingClock({ pct, remainingLabel, subLabel, size = 240 }: Fast
   return (
     <div className="flex flex-col items-center">
       <div
-        className="glow-ring mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10"
+        className="glow-ring mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/40 bg-accent/10"
         aria-hidden="true"
       >
-        <IconMealPlate size={24} className="text-accent" />
+        <ForkKnifeClockBadge />
       </div>
 
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">

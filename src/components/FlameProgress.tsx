@@ -7,11 +7,17 @@ type FlameProgressProps = {
   sub: string
 }
 
+// Base arredondada + 3 pontas de chama (esquerda, centro alta, direita), como
+// pétalas simples que se fundem na base — evita curvas complexas que geram
+// "buracos" visuais de auto-interseção.
 const FLAME_PATH =
-  'M62,4 C40,28 30,44 34,60 C24,54 20,44 21,34 C6,54 2,80 14,102 C24,120 44,132 64,130 C88,128 106,110 106,88 C106,72 98,60 84,52 C90,66 88,80 76,88 C82,72 74,56 58,48 C64,62 60,76 48,82 C52,68 46,54 50,40 C38,50 30,64 32,78 C22,66 22,48 34,34 C30,42 32,50 38,54 C36,34 46,16 62,4 Z'
+  'M94,100 C94,117 75,130 52,130 C29,130 10,117 10,100 C10,83 29,70 52,70 C75,70 94,83 94,100 Z' +
+  ' M30,48 C16,70 16,102 30,112 C44,102 44,70 30,48 Z' +
+  ' M52,8 C34,44 34,96 52,112 C70,96 70,44 52,8 Z' +
+  ' M74,50 C60,72 60,103 74,112 C88,103 88,72 74,50 Z'
 const CLIP_ID = 'flame-progress-clip'
-const TOP_Y = 4
-const BOTTOM_Y = 132
+const TOP_Y = 8
+const BOTTOM_Y = 130
 
 export function FlameProgress({ value, goal, label, sub }: FlameProgressProps) {
   const reduced = useReducedMotion()
@@ -23,13 +29,13 @@ export function FlameProgress({ value, goal, label, sub }: FlameProgressProps) {
   return (
     <figure className="m-0 flex flex-col items-center">
       <motion.svg
-        width={132}
-        height={148}
-        viewBox="0 0 132 148"
+        width={110}
+        height={140}
+        viewBox="0 0 104 138"
         aria-hidden="true"
         animate={reduced ? undefined : { rotate: [-1.5, 1.5, -1.5] }}
         transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ transformOrigin: '66px 140px' }}
+        style={{ transformOrigin: '52px 130px' }}
       >
         <defs>
           <clipPath id={CLIP_ID}>
@@ -49,7 +55,7 @@ export function FlameProgress({ value, goal, label, sub }: FlameProgressProps) {
             animate={{ y: fillTopY }}
             transition={{ duration: reduced ? 0.01 : 1, ease: [0.22, 1, 0.36, 1] }}
           >
-            <rect x="0" y="0" width="132" height={180} fill="url(#flame-fill-gradient)" />
+            <rect x="0" y="0" width="104" height={160} fill="url(#flame-fill-gradient)" />
             {!reduced && (
               <motion.path
                 d="M-40,0 Q-20,-5 0,0 T40,0 T80,0 T120,0 T160,0 T200,0 V5 H-40 Z"

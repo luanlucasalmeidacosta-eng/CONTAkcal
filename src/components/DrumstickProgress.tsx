@@ -22,7 +22,7 @@ export function DrumstickProgress({ value, goal, label, sub }: DrumstickProgress
 
   return (
     <figure className="m-0 flex flex-col items-center">
-      <svg width={172} height={128} viewBox="0 0 180 128" aria-hidden="true">
+      <svg width={188} height={128} viewBox="0 0 200 128" aria-hidden="true">
         <defs>
           <clipPath id={CLIP_ID}>
             <path d={MEAT_PATH} />
@@ -33,17 +33,11 @@ export function DrumstickProgress({ value, goal, label, sub }: DrumstickProgress
           </linearGradient>
         </defs>
 
-        <line
-          x1="145"
-          y1="48"
-          x2="172"
-          y2="30"
-          stroke="var(--color-muted)"
-          strokeWidth={15}
-          strokeLinecap="round"
-        />
-        <circle cx="173" cy="23" r="11" fill="var(--color-muted)" />
-        <circle cx="176" cy="39" r="10" fill="var(--color-muted)" />
+        <g stroke="var(--color-line)" strokeWidth={1.5}>
+          <line x1="145" y1="48" x2="172" y2="30" stroke="var(--color-muted)" strokeWidth={15} strokeLinecap="round" />
+          <circle cx="173" cy="23" r="11" fill="var(--color-muted)" />
+          <circle cx="176" cy="39" r="10" fill="var(--color-muted)" />
+        </g>
 
         <path d={MEAT_PATH} fill="var(--color-track)" />
 
@@ -67,17 +61,6 @@ export function DrumstickProgress({ value, goal, label, sub }: DrumstickProgress
         </g>
 
         <path d={MEAT_PATH} fill="none" stroke="var(--color-line)" strokeWidth={2.5} strokeLinejoin="round" />
-        <line
-          x1="148"
-          y1="46"
-          x2="176"
-          y2="32"
-          stroke="var(--color-line)"
-          strokeWidth={13}
-          strokeLinecap="round"
-          fill="none"
-          opacity={0}
-        />
       </svg>
 
       <div className="mt-1 text-center">

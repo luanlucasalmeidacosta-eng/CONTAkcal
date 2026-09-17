@@ -7,10 +7,12 @@ interface FastingDurationModalProps {
   onSave: (hours: number) => void
 }
 
-const PRESETS = [12, 14, 16, 18, 20, 24]
+const PRESETS = [10, 12, 14, 16, 18, 20]
 
 export function FastingDurationModal({ currentHours, onClose, onSave }: FastingDurationModalProps) {
-  const [hours, setHours] = useState(currentHours)
+  const [customText, setCustomText] = useState(String(currentHours))
+  const parsedHours = customText === '' ? null : Math.min(48, Math.max(0, Number(customText)))
+  const hours = parsedHours === null || Number.isNaN(parsedHours) ? null : parsedHours
 
   return (
     <motion.div
@@ -35,7 +37,7 @@ export function FastingDurationModal({ currentHours, onClose, onSave }: FastingD
             <button
               key={h}
               type="button"
-              onClick={() => setHours(h)}
+              onClick={() => setCustomText(String(h))}
               className={`min-h-[48px] rounded-xl border font-display text-sm font-semibold transition-colors duration-200 ${
                 hours === h ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-bg text-muted'
               }`}
@@ -48,12 +50,14 @@ export function FastingDurationModal({ currentHours, onClose, onSave }: FastingD
         <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-line bg-bg px-4 py-3 text-sm text-fg">
           <span className="text-muted">Personalizado</span>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={1}
-            max={48}
-            value={hours}
-            onChange={(e) => setHours(Math.min(48, Math.max(1, Number(e.target.value) || 0)))}
+            pattern="[0-9]*"
+            value={customText}
+            onChange={(e) => {
+              const digitsOnly = e.target.value.replace(/[^0-9]/g, '')
+              setCustomText(digitsOnly)
+            }}
             className="tnum w-16 bg-transparent text-right text-fg focus:outline-none"
           />
         </label>
@@ -68,8 +72,9 @@ export function FastingDurationModal({ currentHours, onClose, onSave }: FastingD
           </button>
           <button
             type="button"
-            onClick={() => onSave(hours)}
-            className="min-h-[44px] flex-1 rounded-xl bg-accent font-display text-xs font-semibold uppercase tracking-[0.14em] text-bg transition-opacity hover:opacity-90"
+            disabled={hours === null}
+            onClick={() => hours !== null && onSave(hours)}
+            className="min-h-[44px] flex-1 rounded-xl bg-accent font-display text-xs font-semibold uppercase tracking-[0.14em] text-bg transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             Salvar
           </button>

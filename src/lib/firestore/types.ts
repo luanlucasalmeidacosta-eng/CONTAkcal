@@ -39,6 +39,11 @@ export interface UserDoc {
   phaseState?: PhaseState;
   /** Histórico de trocas de fase — usado para reconstruir "qual fase valia em cada semana" nos relatórios mensais. */
   phaseHistory?: PhaseHistoryEntry[];
+
+  /** Duração alvo do jejum intermitente em horas (persiste entre ciclos). */
+  fastingDurationHours?: number;
+  /** Início do ciclo de jejum ativo; null quando não há jejum em andamento. */
+  fastingStartedAt?: string | null;
 }
 
 export interface MealItem {

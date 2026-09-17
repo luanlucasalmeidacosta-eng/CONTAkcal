@@ -4,6 +4,7 @@ import { HomeView } from '@/sections/HomeView'
 import { WeekView } from '@/sections/WeekView'
 import { WaterView } from '@/sections/WaterView'
 import { ReportsView } from '@/sections/ReportsView'
+import { FastingView } from '@/sections/FastingView'
 import { AjustesView } from '@/sections/AjustesView'
 
 export function MainApp() {
@@ -16,6 +17,7 @@ export function MainApp() {
         {tab === 'semana' && <WeekView />}
         {tab === 'agua' && <WaterView />}
         {tab === 'relatorios' && <ReportsView />}
+        {tab === 'jejum' && <FastingView />}
         {tab === 'ajustes' && <AjustesView />}
       </div>
       <BottomNav active={tab} onChange={setTab} />

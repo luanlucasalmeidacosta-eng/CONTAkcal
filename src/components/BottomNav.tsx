@@ -1,12 +1,13 @@
-import { IconReports, IconSettings, IconToday, IconWater, IconWeek } from '@/icons'
+import { IconClock, IconReports, IconSettings, IconToday, IconWater, IconWeek } from '@/icons'
 
-export type TabId = 'hoje' | 'semana' | 'relatorios' | 'agua' | 'ajustes'
+export type TabId = 'hoje' | 'semana' | 'relatorios' | 'agua' | 'jejum' | 'ajustes'
 
 const tabs: { id: TabId; label: string; icon: (p: { size?: number }) => React.ReactNode }[] = [
   { id: 'hoje', label: 'Hoje', icon: IconToday },
   { id: 'semana', label: 'Semana', icon: IconWeek },
   { id: 'relatorios', label: 'Relatórios', icon: IconReports },
   { id: 'agua', label: 'Água', icon: IconWater },
+  { id: 'jejum', label: 'Jejum', icon: IconClock },
   { id: 'ajustes', label: 'Ajustes', icon: IconSettings },
 ]
 

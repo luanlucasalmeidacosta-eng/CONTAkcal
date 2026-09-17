@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/AuthContext'
 import { PhaseChangeCard } from '@/features/phase/PhaseChangeCard'
-import { DietLibraryCard } from '@/features/dietLibrary/DietLibraryCard'
+import { DietLibraryScreen } from '@/features/dietLibrary/DietLibraryScreen'
 import { addWeighIn, subscribeWeighIns, type WeighInWithId } from '@/lib/firestore/weighIns'
 import { applyStagnationAdjustment, resetProtocol } from '@/lib/firestore/users'
 import { computeStagnation } from '@/lib/nutrition/stagnation'
@@ -34,6 +34,7 @@ export function AjustesView() {
   const [resetStep, setResetStep] = useState<'idle' | 'confirm1' | 'confirm2'>('idle')
   const [resetting, setResetting] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
+  const [dietLibraryOpen, setDietLibraryOpen] = useState(false)
 
   useEffect(() => {
     if (!userDoc?.uid) return
@@ -41,6 +42,10 @@ export function AjustesView() {
   }, [userDoc?.uid])
 
   if (!userDoc) return null
+
+  if (dietLibraryOpen) {
+    return <DietLibraryScreen onBack={() => setDietLibraryOpen(false)} />
+  }
 
   const pesoNumero = Number(peso)
   const valid = peso !== '' && pesoNumero > 0 && (tipo === 'semanal' || jejum)
@@ -245,7 +250,14 @@ export function AjustesView() {
 
       <PhaseChangeCard />
 
-      <DietLibraryCard />
+      <button
+        type="button"
+        onClick={() => setDietLibraryOpen(true)}
+        className="mt-6 flex min-h-[56px] w-full items-center justify-between rounded-2xl border border-line bg-surface px-4 font-display text-sm font-semibold text-fg transition-colors duration-200 hover:border-accent/60"
+      >
+        Minha Dieta Ajustada
+        <span className="text-muted">→</span>
+      </button>
 
       <div className="mt-6 rounded-2xl border border-accent-soft/40 bg-surface p-4">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-accent-soft">

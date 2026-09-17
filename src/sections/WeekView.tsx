@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
-import { LoadingBar } from '@/components/LoadingBar'
+import { FlameProgress } from '@/components/FlameProgress'
+import { DrumstickProgress } from '@/components/DrumstickProgress'
 import { WeeklyProteinChart } from '@/components/WeeklyProteinChart'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
@@ -64,14 +65,11 @@ export function WeekView() {
 
       <div className="mt-10 grid gap-6 lg:mt-14 lg:grid-cols-2 lg:items-start">
         <div className="flex flex-col items-center rounded-2xl border border-line bg-surface px-4 py-6">
-          <Ring
-            animateKey={6}
+          <FlameProgress
             value={weekTotalsSoFar.kcal}
             goal={weeklyCalorieGoal}
             label="Calorias"
             sub={`${Math.round(weekTotalsSoFar.kcal).toLocaleString('pt-BR')} de ${weeklyCalorieGoal.toLocaleString('pt-BR')} kcal`}
-            size={168}
-            stroke={12}
           />
           <p className="mt-3 text-xs text-faint">Progresso da semana</p>
           <p className="tnum mt-1 text-xs text-faint">
@@ -105,8 +103,8 @@ export function WeekView() {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-line bg-surface p-4">
-        <LoadingBar
+      <div className="mt-6 flex justify-center rounded-2xl border border-line bg-surface p-4">
+        <DrumstickProgress
           value={weekTotalsSoFar.protein}
           goal={weeklyProteinGoal}
           label="Proteína batida na semana"

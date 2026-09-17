@@ -2,7 +2,8 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { PhaseChip } from '@/components/PhaseChip'
 import { Ring } from '@/components/Ring'
-import { LoadingBar } from '@/components/LoadingBar'
+import { FlameProgress } from '@/components/FlameProgress'
+import { DrumstickProgress } from '@/components/DrumstickProgress'
 import { IconMealPlate } from '@/icons'
 import { useAuth } from '@/features/auth/AuthContext'
 import { MealChatModal } from '@/features/chat/MealChatModal'
@@ -104,23 +105,21 @@ export function HomeView() {
 
       <div className="mt-10 grid gap-10 lg:mt-14 lg:grid-cols-[1fr_320px] lg:items-start lg:gap-12">
         <div className="flex flex-col items-center">
-          <Ring
-            animateKey={1}
+          <DrumstickProgress
             value={todayTotals.protein}
             goal={userDoc.proteinGoal ?? 0}
             label="Proteína"
             sub={`${Math.round(todayTotals.protein)}g de ${userDoc.proteinGoal ?? 0}g`}
-            size={216}
-            stroke={14}
-            emphasized
           />
           <div className="mt-8 w-full rounded-2xl border border-line bg-surface px-5 py-5 lg:mt-10">
-            <LoadingBar
-              value={todayTotals.kcal}
-              goal={availableCalories}
-              label="Calorias"
-              sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} de ${Math.round(availableCalories).toLocaleString('pt-BR')} kcal hoje`}
-            />
+            <div className="flex justify-center">
+              <FlameProgress
+                value={todayTotals.kcal}
+                goal={availableCalories}
+                label="Calorias"
+                sub={`${Math.round(todayTotals.kcal).toLocaleString('pt-BR')} de ${Math.round(availableCalories).toLocaleString('pt-BR')} kcal hoje`}
+              />
+            </div>
             <p className="tnum mt-3 text-center text-xs text-faint">
               Restam <span className="font-semibold text-accent">{Math.round(remainingToday).toLocaleString('pt-BR')} kcal</span> disponíveis para hoje
             </p>

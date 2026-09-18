@@ -16,6 +16,7 @@ workflows:
       - name: Buildar APK debug
         script: |
           cd android
+          chmod +x ./gradlew
           ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/**/*.apk

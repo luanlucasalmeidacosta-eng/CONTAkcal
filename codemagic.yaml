@@ -40,7 +40,7 @@ workflows:
       - name: Buildar para simulador (não requer certificado Apple)
         script: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App \
+          xcodebuild -project App.xcodeproj -scheme App \
             -sdk iphonesimulator -configuration Debug \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO
     artifacts:

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CONTAkcal</string>
+    <string name="title_activity_main">CONTAkcal</string>
+    <string name="package_name">com.vixeluan.contakcal</string>
+    <string name="custom_url_scheme">com.vixeluan.contakcal</string>
+</resources>

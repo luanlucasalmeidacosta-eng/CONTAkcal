@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { callGemini } from "./_gemini.js";
 
 interface ConversationTurn {
   role: "user" | "model";
@@ -83,44 +84,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: buildSystemInstruction(body.dishLibrary) }] },
-        contents: body.history.map((turn) => ({
-          role: turn.role,
-          parts: [{ text: turn.text }],
-        })),
-        generationConfig: {
-          responseMimeType: "application/json",
-          maxOutputTokens: 3000,
-          thinkingConfig: { thinkingBudget: 200 },
-          responseSchema: RESPONSE_SCHEMA,
-        },
-      }),
+  const result = await callGemini(apiKey, {
+    systemInstruction: { parts: [{ text: buildSystemInstruction(body.dishLibrary) }] },
+    contents: body.history.map((turn) => ({
+      role: turn.role,
+      parts: [{ text: turn.text }],
+    })),
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 3000,
+      thinkingConfig: { thinkingBudget: 200 },
+      responseSchema: RESPONSE_SCHEMA,
     },
-  );
+  });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    res.status(response.status).json({ error: errorBody });
-    return;
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    res.status(502).json({ error: "Resposta vazia da IA." });
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.message, retryable: true });
     return;
   }
 
   try {
-    const parsed = JSON.parse(text);
+    const parsed = JSON.parse(result.text);
     res.status(200).json(parsed);
   } catch {
-    res.status(502).json({ error: "A IA retornou um JSON inválido." });
+    console.warn("[parse-meal] JSON inválido do modelo", result.model, result.text.slice(0, 500));
+    res.status(502).json({ error: "A IA respondeu de um jeito inesperado. Tente novamente.", retryable: true });
   }
 }

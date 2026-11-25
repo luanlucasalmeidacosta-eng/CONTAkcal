@@ -181,7 +181,20 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
               </Bubble>
             )}
 
-            {chat.phase === 'error' && chat.error && <Bubble role="assistant">{chat.error}</Bubble>}
+            {chat.phase === 'error' && chat.error && (
+              <Bubble role="assistant">
+                <p>{chat.error}</p>
+                {chat.canRetry && !chat.limitReached && (
+                  <button
+                    type="button"
+                    onClick={chat.retry}
+                    className="mt-2 rounded-full border border-accent/60 px-3 py-1 text-xs font-semibold text-accent transition-colors duration-200 hover:bg-accent/10"
+                  >
+                    Tentar novamente
+                  </button>
+                )}
+              </Bubble>
+            )}
           </div>
 
           {chat.limitReached && (

@@ -4,6 +4,7 @@ import { getDishLibrary, upsertDish } from "@/lib/firestore/dishes";
 import { addMeal } from "@/lib/firestore/meals";
 import type { MealItem, MealTotals } from "@/lib/firestore/types";
 import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
+import { AiRequestError } from "@/lib/ai/fetchAi";
 import { DAILY_AI_MESSAGE_LIMIT, incrementAiMessageCount, subscribeAiMessageCount } from "@/lib/firestore/aiUsage";
 
 type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
@@ -24,6 +25,8 @@ export function useMealChat(targetDate?: Date) {
   const [error, setError] = useState<string | null>(null);
   const [messageCount, setMessageCount] = useState(0);
   const [sourceVariantLabel, setSourceVariantLabel] = useState<string | undefined>();
+  /** Histórico do turno que falhou, para "Tentar novamente" sem redigitar. */
+  const [failedHistory, setFailedHistory] = useState<ConversationTurn[] | null>(null);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -36,15 +39,21 @@ export function useMealChat(targetDate?: Date) {
     if (!firebaseUser) return;
     if (limitReached) {
       setError(`Você atingiu o limite de ${DAILY_AI_MESSAGE_LIMIT} mensagens de IA hoje. Tente novamente amanhã.`);
+      setFailedHistory(null);
       setPhase("error");
       return;
     }
     setPhase("loading");
     setError(null);
+    setFailedHistory(null);
     try {
-      await incrementAiMessageCount(firebaseUser.uid);
       const library = await getDishLibrary(firebaseUser.uid).catch(() => []);
       const result = await parseMeal(nextHistory, library);
+      // Só conta no limite diário quando a IA de fato respondeu: falhas do
+      // servidor (ex: Gemini sobrecarregado) não gastam mensagens do usuário.
+      void incrementAiMessageCount(firebaseUser.uid).catch((err) =>
+        console.error("incrementAiMessageCount failed:", err),
+      );
       setHistory([...nextHistory, { role: "model", text: JSON.stringify(result) }]);
 
       if (result.status === "need_info" && result.question) {
@@ -61,8 +70,17 @@ export function useMealChat(targetDate?: Date) {
     } catch (err) {
       console.error("parseMeal failed:", err);
       setError(err instanceof Error ? err.message : "Erro inesperado.");
+      // Respostas incompletas da IA também valem uma nova tentativa.
+      const retryable = !(err instanceof AiRequestError) || err.retryable;
+      setFailedHistory(retryable ? nextHistory : null);
       setPhase("error");
     }
+  }
+
+  /** Reenvia o último turno que falhou, sem duplicar a mensagem na tela. */
+  function retry() {
+    if (!failedHistory || phase === "loading") return;
+    void runTurn(failedHistory);
   }
 
   function sendMessage(text: string) {
@@ -143,6 +161,7 @@ export function useMealChat(targetDate?: Date) {
 
   function reset() {
     setPhase("idle");
+    setFailedHistory(null);
     setHistory([]);
     setMessages([]);
     setDishName(undefined);
@@ -160,6 +179,8 @@ export function useMealChat(targetDate?: Date) {
     totals,
     error,
     sendMessage,
+    retry,
+    canRetry: phase === "error" && failedHistory !== null,
     confirm,
     reset,
     messageCount,

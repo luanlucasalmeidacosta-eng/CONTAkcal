@@ -184,6 +184,7 @@ export function MealChatModal({ open, onClose, title, targetDate, renderConfirme
             {chat.phase === 'error' && chat.error && (
               <Bubble role="assistant">
                 <p>{chat.error}</p>
+                {chat.errorDetail && <p className="mt-1 text-[11px] text-faint">Detalhe: {chat.errorDetail}</p>}
                 {chat.canRetry && !chat.limitReached && (
                   <button
                     type="button"

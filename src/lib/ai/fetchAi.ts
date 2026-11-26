@@ -11,10 +11,16 @@ const CLIENT_TIMEOUT_MS = 60_000;
 
 export class AiRequestError extends Error {
   readonly retryable: boolean;
-  constructor(message: string, retryable: boolean) {
+  /** Vale repetir sozinho, sem o usuário pedir (sobrecarga, queda, tempo). Cota esgotada não. */
+  readonly autoRetry: boolean;
+  /** Resumo técnico do que cada modelo respondeu, para diagnóstico. */
+  readonly detail?: string;
+  constructor(message: string, retryable: boolean, autoRetry = retryable, detail?: string) {
     super(message);
     this.name = "AiRequestError";
     this.retryable = retryable;
+    this.autoRetry = autoRetry;
+    this.detail = detail;
   }
 }
 
@@ -44,7 +50,7 @@ export async function postAi<T>(url: string, body: unknown, fallbackMessage: str
   }
   clearTimeout(timer);
 
-  let data: { error?: unknown } | null = null;
+  let data: { error?: unknown; detail?: unknown } | null = null;
   try {
     data = await res.json();
   } catch {
@@ -60,7 +66,8 @@ export async function postAi<T>(url: string, body: unknown, fallbackMessage: str
         : retryable
           ? "A IA está instável no momento. Tente novamente em alguns segundos."
           : fallbackMessage;
-    throw new AiRequestError(message, retryable);
+    const detail = typeof data?.detail === "string" && data.detail ? data.detail : `HTTP ${res.status}`;
+    throw new AiRequestError(message, retryable, retryable && res.status !== 429, detail);
   }
 
   return data as T;

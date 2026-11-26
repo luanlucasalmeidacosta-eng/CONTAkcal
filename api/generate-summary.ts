@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   });
 
   if (!result.ok) {
-    res.status(result.status).json({ error: result.message, retryable: true });
+    res.status(result.status).json({ error: result.message, detail: result.detail, retryable: true });
     return;
   }
 

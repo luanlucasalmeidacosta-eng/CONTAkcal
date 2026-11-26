@@ -7,6 +7,8 @@ import { parseMeal, type ConversationTurn } from "@/lib/ai/mealParser";
 import { AiRequestError } from "@/lib/ai/fetchAi";
 import { DAILY_AI_MESSAGE_LIMIT, incrementAiMessageCount, subscribeAiMessageCount } from "@/lib/firestore/aiUsage";
 
+const AUTO_RETRY_DELAY_MS = 4000;
+
 type ChatPhase = "idle" | "loading" | "asking" | "ready" | "saving" | "confirmed" | "error";
 
 export interface ChatMessage {
@@ -27,6 +29,8 @@ export function useMealChat(targetDate?: Date) {
   const [sourceVariantLabel, setSourceVariantLabel] = useState<string | undefined>();
   /** Histórico do turno que falhou, para "Tentar novamente" sem redigitar. */
   const [failedHistory, setFailedHistory] = useState<ConversationTurn[] | null>(null);
+  /** Resumo técnico da última falha (o que cada modelo respondeu). */
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!firebaseUser) return;
@@ -45,10 +49,21 @@ export function useMealChat(targetDate?: Date) {
     }
     setPhase("loading");
     setError(null);
+    setErrorDetail(null);
     setFailedHistory(null);
     try {
       const library = await getDishLibrary(firebaseUser.uid).catch(() => []);
-      const result = await parseMeal(nextHistory, library);
+      let result;
+      try {
+        result = await parseMeal(nextHistory, library);
+      } catch (err) {
+        // Sobrecarga costuma passar em segundos: uma nova rodada automática
+        // (o servidor já tenta 3 modelos) antes de incomodar o usuário.
+        if (!(err instanceof AiRequestError) || !err.autoRetry) throw err;
+        console.warn("parseMeal: nova tentativa automática", err.detail);
+        await new Promise((resolve) => setTimeout(resolve, AUTO_RETRY_DELAY_MS));
+        result = await parseMeal(nextHistory, library);
+      }
       // Só conta no limite diário quando a IA de fato respondeu: falhas do
       // servidor (ex: Gemini sobrecarregado) não gastam mensagens do usuário.
       void incrementAiMessageCount(firebaseUser.uid).catch((err) =>
@@ -70,6 +85,7 @@ export function useMealChat(targetDate?: Date) {
     } catch (err) {
       console.error("parseMeal failed:", err);
       setError(err instanceof Error ? err.message : "Erro inesperado.");
+      setErrorDetail(err instanceof AiRequestError ? (err.detail ?? null) : null);
       // Respostas incompletas da IA também valem uma nova tentativa.
       const retryable = !(err instanceof AiRequestError) || err.retryable;
       setFailedHistory(retryable ? nextHistory : null);
@@ -162,6 +178,7 @@ export function useMealChat(targetDate?: Date) {
   function reset() {
     setPhase("idle");
     setFailedHistory(null);
+    setErrorDetail(null);
     setHistory([]);
     setMessages([]);
     setDishName(undefined);
@@ -178,6 +195,7 @@ export function useMealChat(targetDate?: Date) {
     items,
     totals,
     error,
+    errorDetail,
     sendMessage,
     retry,
     canRetry: phase === "error" && failedHistory !== null,

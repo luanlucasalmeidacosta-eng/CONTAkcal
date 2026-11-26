@@ -36,7 +36,7 @@ describe("callGemini", () => {
   it("tenta de novo quando o modelo está sobrecarregado e devolve a resposta", async () => {
     fetchMock.mockResolvedValueOnce(overloaded()).mockResolvedValueOnce(ok('{"status":"complete"}'));
     const result = await run(callGemini("k", {}));
-    expect(result).toEqual({ ok: true, text: '{"status":"complete"}', model: "gemini-3.8-flash" });
+    expect(result).toEqual({ ok: true, text: '{"status":"complete"}', model: "gemini-3.6-flash" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -47,8 +47,8 @@ describe("callGemini", () => {
       .mockResolvedValueOnce(overloaded())
       .mockResolvedValueOnce(ok("oi"));
     const result = await run(callGemini("k", {}));
-    expect(result).toMatchObject({ ok: true, text: "oi", model: "gemini-3.6-flash" });
-    expect(String(fetchMock.mock.calls[3][0])).toContain("gemini-3.6-flash");
+    expect(result).toMatchObject({ ok: true, text: "oi", model: "gemini-3.8-flash" });
+    expect(String(fetchMock.mock.calls[3][0])).toContain("gemini-3.8-flash");
   });
 
   it("chega ao flash-lite se os dois Flash estiverem fora", async () => {
@@ -63,7 +63,7 @@ describe("callGemini", () => {
   it("um modelo inexistente (404) pula direto para o próximo", async () => {
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 404 })).mockResolvedValueOnce(ok("ok"));
     const result = await run(callGemini("k", {}));
-    expect(result).toMatchObject({ ok: true, model: "gemini-3.6-flash" });
+    expect(result).toMatchObject({ ok: true, model: "gemini-3.8-flash" });
   });
 
   it("refaz sem thinkingConfig quando o modelo recusa esse campo", async () => {
@@ -72,7 +72,7 @@ describe("callGemini", () => {
       .mockResolvedValueOnce(ok("{}"));
     const payload = { generationConfig: { maxOutputTokens: 10, thinkingConfig: { thinkingBudget: 200 } } };
     const result = await run(callGemini("k", payload));
-    expect(result).toMatchObject({ ok: true, model: "gemini-3.8-flash" });
+    expect(result).toMatchObject({ ok: true, model: "gemini-3.6-flash" });
     const secondBody = JSON.parse(fetchMock.mock.calls[1][1].body);
     expect(secondBody.generationConfig).toEqual({ maxOutputTokens: 10 });
   });
@@ -91,6 +91,7 @@ describe("callGemini", () => {
       ok: false,
       status: 503,
       message: "A IA está sobrecarregada no momento. Tente novamente em alguns segundos.",
+      detail: "3.6-flash 503 503 503 · 3.8-flash 503 503 503 · 3.5-flash-lite 503 503 503",
     });
     expect(fetchMock).toHaveBeenCalledTimes(9); // 3 modelos x 3 tentativas
   });
@@ -100,6 +101,24 @@ describe("callGemini", () => {
     const result = await run(callGemini("k", {}));
     expect(result).toMatchObject({ ok: false, status: 502 });
     expect(fetchMock).toHaveBeenCalledTimes(3); // 1x em cada modelo
+  });
+
+  it("cota esgotada (429) pula direto para o próximo modelo, sem insistir", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response('{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota exceeded"}}', { status: 429 }))
+      .mockResolvedValueOnce(ok("ok"));
+    const result = await run(callGemini("k", {}));
+    expect(result).toMatchObject({ ok: true, model: "gemini-3.8-flash" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("avisa sobre a cota quando todos os modelos estão sem cota", async () => {
+    fetchMock.mockImplementation(
+      async () => new Response('{"error":{"status":"RESOURCE_EXHAUSTED","message":"quota exceeded"}}', { status: 429 }),
+    );
+    const result = await run(callGemini("k", {}));
+    expect(result).toMatchObject({ ok: false, status: 429, detail: "3.6-flash 429 · 3.8-flash 429 · 3.5-flash-lite 429" });
+    expect((result as { message: string }).message).toContain("cota");
   });
 
   it("ignora partes de raciocínio (thought) ao montar o texto", async () => {

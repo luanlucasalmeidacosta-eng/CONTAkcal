@@ -7,13 +7,14 @@
  * A requisição é montada no formato do Gemini (systemInstruction, contents,
  * generationConfig) e adaptada para cada modelo da fila:
  *
- *  1. gemini-3.6-flash      o que o app sempre usou; melhor qualidade.
- *  2. gemma-4-31b-it        gratuito, mesma GEMINI_API_KEY, cota própria
- *  3. gemma-4-26b-a4b-it    (~14.400 pedidos/dia) e sem plano pago.
- *  4. gemini-3.8-flash      Flash mais novo; cota gratuita bem pequena.
- *  5. gemini-3.5-flash-lite estável, mais leve.
- *  6. Groq (opcional)       outro provedor, gratuito sem cartão; só entra se
- *                           GROQ_API_KEY estiver configurada na Vercel.
+ *  1. Groq                  gratuito sem cartão, rápido e com cota folgada
+ *                           (~1.000 pedidos/dia); só entra se GROQ_API_KEY
+ *                           estiver configurada na Vercel.
+ *  2. gemini-3.6-flash      o que o app sempre usou.
+ *  3. gemma-4-31b-it        gratuito, mesma GEMINI_API_KEY, cota própria
+ *  4. gemma-4-26b-a4b-it    (~14.400 pedidos/dia) e sem plano pago.
+ *  5. gemini-3.8-flash      Flash mais novo; cota gratuita bem pequena.
+ *  6. gemini-3.5-flash-lite estável, mais leve.
  *
  * O plano gratuito do Gemini Flash tem cota diária pequena e fica no fim da
  * fila quando o Google está sobrecarregado (erro 503). Os Gemma e o Groq não
@@ -22,7 +23,9 @@
  * Dá para mudar a fila sem mexer no código:
  *  - GEMINI_MODEL: primeiro modelo.
  *  - GEMINI_FALLBACK_MODEL: reservas do Google, separadas por vírgula.
- *  - GROQ_API_KEY / GROQ_MODEL: reserva no Groq.
+ *  - GROQ_API_KEY / GROQ_MODEL: chave e modelo do Groq.
+ *  - AI_PRIMARY_PROVIDER: "groq" (padrão) põe o Groq em primeiro; "google"
+ *    deixa o Groq por último, como reserva.
  * O erro cru dos provedores nunca vai para o usuário: fica só no log.
  */
 
@@ -82,10 +85,11 @@ function targets(): Target[] {
     // Gemma é maior e mais lento para escrever o JSON inteiro.
     timeoutMs: isGemma(model) ? 30_000 : 20_000,
   }));
-  if (process.env.GROQ_API_KEY) {
-    list.push({ provider: "groq", model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL, timeoutMs: 25_000 });
-  }
-  return list;
+  if (!process.env.GROQ_API_KEY) return list;
+
+  const groq: Target = { provider: "groq", model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL, timeoutMs: 25_000 };
+  const groqFirst = (process.env.AI_PRIMARY_PROVIDER || "groq").trim().toLowerCase() !== "google";
+  return groqFirst ? [groq, ...list] : [...list, groq];
 }
 
 function systemText(payload: GeminiPayload): string {

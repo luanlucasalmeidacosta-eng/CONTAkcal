@@ -157,8 +157,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return;
   }
-  if (result.model !== (process.env.GEMINI_MODEL || "gemini-3.6-flash")) {
-    console.info(`[parse-meal] respondido pelo modelo reserva ${result.model}`);
-  }
+  console.info(`[parse-meal] respondido por ${result.model}`);
   res.status(200).json(normalized);
 }

@@ -45,6 +45,7 @@ describe("callGemini", () => {
     delete process.env.GEMINI_FALLBACK_MODEL;
     delete process.env.GROQ_API_KEY;
     delete process.env.GROQ_MODEL;
+    delete process.env.AI_PRIMARY_PROVIDER;
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -156,16 +157,19 @@ describe("callGemini", () => {
     expect(result).toMatchObject({ ok: true, model: "modelo-b" });
   });
 
-  it("Groq só entra com GROQ_API_KEY, por último, no formato OpenAI", async () => {
+  function groqOk() {
+    return new Response(JSON.stringify({ choices: [{ message: { content: '{"status":"complete"}' } }] }), {
+      status: 200,
+    });
+  }
+
+  it("com GROQ_API_KEY, o Groq é o primeiro, no formato OpenAI", async () => {
     process.env.GROQ_API_KEY = "gk";
-    fetchMock.mockImplementation(async (url: string) =>
-      url.includes("api.groq.com")
-        ? new Response(JSON.stringify({ choices: [{ message: { content: '{"status":"complete"}' } }] }), { status: 200 })
-        : noQuota(),
-    );
+    fetchMock.mockImplementation(async (url: string) => (url.includes("api.groq.com") ? groqOk() : ok("google")));
     const result = await run(callGemini("k", MEAL_PAYLOAD));
     expect(result).toMatchObject({ ok: true, model: "openai/gpt-oss-120b", text: '{"status":"complete"}' });
-    const groqCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1];
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const groqCall = fetchMock.mock.calls[0];
     expect(urlOf(groqCall)).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect((groqCall[1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer gk" });
     const body = bodyOf(groqCall);
@@ -173,6 +177,31 @@ describe("callGemini", () => {
     expect(body.messages[0].role).toBe("system");
     expect(body.messages[0].content).toContain("INSTRUCAO");
     expect(body.messages[1]).toEqual({ role: "user", content: "1 tapioca" });
+  });
+
+  it("se o Groq falhar, segue para o Gemini", async () => {
+    process.env.GROQ_API_KEY = "gk";
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("api.groq.com") ? new Response('{"error":{"message":"rate limit"}}', { status: 429 }) : ok("google"),
+    );
+    const result = await run(callGemini("k", MEAL_PAYLOAD));
+    expect(result).toMatchObject({ ok: true, model: "gemini-3.6-flash", text: "google" });
+  });
+
+  it("AI_PRIMARY_PROVIDER=google deixa o Groq por último", async () => {
+    process.env.GROQ_API_KEY = "gk";
+    process.env.AI_PRIMARY_PROVIDER = "google";
+    fetchMock.mockImplementation(async (url: string) => (url.includes("api.groq.com") ? groqOk() : noQuota()));
+    const result = await run(callGemini("k", MEAL_PAYLOAD));
+    expect(result).toMatchObject({ ok: true, model: "openai/gpt-oss-120b" });
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    expect(urlOf(fetchMock.mock.calls[0])).toContain("gemini-3.6-flash");
+  });
+
+  it("sem GROQ_API_KEY, o Groq nunca é chamado", async () => {
+    fetchMock.mockImplementation(async () => noQuota());
+    await run(callGemini("k", MEAL_PAYLOAD));
+    expect(fetchMock.mock.calls.some((c) => urlOf(c).includes("groq"))).toBe(false);
   });
 
   it("ignora partes de raciocínio (thought) ao montar o texto", async () => {

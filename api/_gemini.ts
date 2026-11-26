@@ -1,34 +1,46 @@
 /**
- * Chamada ao Gemini com tentativas automáticas e modelo reserva.
+ * Chamada de IA com tentativas automáticas e uma fila de modelos reserva.
  *
  * Arquivos em /api que começam com "_" não viram rota na Vercel, então este
  * módulo é só um helper compartilhado por parse-meal e generate-summary.
  *
- * Quando o Google responde 429/500/503/504 (ex: "This model is currently
- * experiencing high demand"), ou a chamada estoura o tempo, tentamos de novo
- * com espera crescente e, se o modelo principal seguir indisponível, passamos
- * para o modelo reserva. O erro cru do Google nunca vai para o usuário: fica
- * só no log do servidor.
+ * A requisição é montada no formato do Gemini (systemInstruction, contents,
+ * generationConfig) e adaptada para cada modelo da fila:
+ *
+ *  1. gemini-3.6-flash      o que o app sempre usou; melhor qualidade.
+ *  2. gemma-4-31b-it        gratuito, mesma GEMINI_API_KEY, cota própria
+ *  3. gemma-4-26b-a4b-it    (~14.400 pedidos/dia) e sem plano pago.
+ *  4. gemini-3.8-flash      Flash mais novo; cota gratuita bem pequena.
+ *  5. gemini-3.5-flash-lite estável, mais leve.
+ *  6. Groq (opcional)       outro provedor, gratuito sem cartão; só entra se
+ *                           GROQ_API_KEY estiver configurada na Vercel.
+ *
+ * O plano gratuito do Gemini Flash tem cota diária pequena e fica no fim da
+ * fila quando o Google está sobrecarregado (erro 503). Os Gemma e o Groq não
+ * dividem essa fila nem essa cota, então seguram o app sem faturamento.
+ *
+ * Dá para mudar a fila sem mexer no código:
+ *  - GEMINI_MODEL: primeiro modelo.
+ *  - GEMINI_FALLBACK_MODEL: reservas do Google, separadas por vírgula.
+ *  - GROQ_API_KEY / GROQ_MODEL: reserva no Groq.
+ * O erro cru dos provedores nunca vai para o usuário: fica só no log.
  */
 
-/**
- * Modelos (pesquisa de nov/2026):
- * - gemini-3.6-flash: o que o app sempre usou e que funcionava nesta conta; fica em primeiro.
- * - gemini-3.8-flash: Flash estável mais novo (GA em 02/09/2026); há relatos de 503
- *   constante nele no plano gratuito, por isso entra como reserva.
- * - gemini-3.5-flash-lite: estável, mais leve e em outra capacidade; última reserva.
- * Dá para trocar sem mexer no código: GEMINI_MODEL e GEMINI_FALLBACK_MODEL
- * (este aceita vários, separados por vírgula).
- */
 const DEFAULT_PRIMARY_MODEL = "gemini-3.6-flash";
-const DEFAULT_FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+const DEFAULT_FALLBACK_MODELS = [
+  "gemma-4-31b-it",
+  "gemma-4-26b-a4b-it",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
+];
+const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 
-/** Tempo máximo de cada tentativa individual. */
-const ATTEMPT_TIMEOUT_MS = 20_000;
-/** Espera antes de cada nova tentativa no mesmo modelo. */
-const RETRY_DELAYS_MS = [800, 2000];
-/** Tempo total máximo somando todas as tentativas (o app desiste em 60s). */
-const TOTAL_DEADLINE_MS = 45_000;
+/** Espera antes de repetir no mesmo modelo após sobrecarga (503 etc.). */
+const RETRY_DELAYS_MS = [1000];
+/** Para de tentar modelos novos depois disso (a Vercel corta em 60s). */
+const TOTAL_DEADLINE_MS = 50_000;
+/** Nenhuma tentativa passa deste ponto, contado do início. */
+const HARD_LIMIT_MS = 56_000;
 
 const RETRYABLE_STATUS = new Set([500, 502, 503, 504]);
 
@@ -36,44 +48,92 @@ export type GeminiResult =
   | { ok: true; text: string; model: string }
   | { ok: false; status: number; message: string; detail: string };
 
+interface GeminiPayload {
+  systemInstruction?: { parts?: { text?: string }[] };
+  contents?: { role: string; parts: { text?: string }[] }[];
+  generationConfig?: Record<string, unknown> & {
+    responseMimeType?: string;
+    responseSchema?: unknown;
+    maxOutputTokens?: number;
+  };
+}
+
+type Target = { provider: "google" | "groq"; model: string; timeoutMs: number };
+
+type AttemptResult = { kind: "http"; status: number; body: string } | { kind: "timeout" | "network" };
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function modelChain(): string[] {
+function isGemma(model: string) {
+  return model.startsWith("gemma-");
+}
+
+function targets(): Target[] {
   const primary = process.env.GEMINI_MODEL || DEFAULT_PRIMARY_MODEL;
   const fallbacks =
     process.env.GEMINI_FALLBACK_MODEL !== undefined
       ? process.env.GEMINI_FALLBACK_MODEL.split(",").map((m) => m.trim()).filter(Boolean)
       : DEFAULT_FALLBACK_MODELS;
-  return [...new Set([primary, ...fallbacks])];
+  const list: Target[] = [...new Set([primary, ...fallbacks])].map((model) => ({
+    provider: "google",
+    model,
+    // Gemma é maior e mais lento para escrever o JSON inteiro.
+    timeoutMs: isGemma(model) ? 30_000 : 20_000,
+  }));
+  if (process.env.GROQ_API_KEY) {
+    list.push({ provider: "groq", model: process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL, timeoutMs: 25_000 });
+  }
+  return list;
+}
+
+function systemText(payload: GeminiPayload): string {
+  return (payload.systemInstruction?.parts ?? []).map((p) => p.text ?? "").join("\n").trim();
+}
+
+/** Instrução de formato para modelos sem saída estruturada nativa. */
+function jsonInstruction(payload: GeminiPayload): string {
+  const cfg = payload.generationConfig;
+  if (cfg?.responseMimeType !== "application/json") return "";
+  const schema = cfg.responseSchema ? `\nEsquema (OpenAPI) que o JSON deve seguir:\n${JSON.stringify(cfg.responseSchema)}` : "";
+  return `\n\nFORMATO DA RESPOSTA: responda SOMENTE com um objeto JSON válido, sem texto antes ou depois e sem blocos de código.${schema}`;
 }
 
 /** Mesma requisição sem thinkingConfig, para modelos que recusam esse campo. */
-function withoutThinkingConfig(payload: unknown): unknown | null {
-  const p = payload as { generationConfig?: Record<string, unknown> } | null;
-  if (!p?.generationConfig || !("thinkingConfig" in p.generationConfig)) return null;
-  const { thinkingConfig: _omit, ...generationConfig } = p.generationConfig;
-  return { ...p, generationConfig };
+function withoutThinkingConfig(payload: GeminiPayload): GeminiPayload | null {
+  if (!payload.generationConfig || !("thinkingConfig" in payload.generationConfig)) return null;
+  const { thinkingConfig: _omit, ...generationConfig } = payload.generationConfig;
+  return { ...payload, generationConfig };
 }
 
-async function attempt(
-  apiKey: string,
-  model: string,
-  payload: unknown,
-): Promise<{ kind: "http"; status: number; body: string } | { kind: "timeout" | "network" }> {
+/**
+ * Gemma pela API do Gemini não aceita systemInstruction, saída JSON nativa
+ * nem thinkingConfig: a instrução vai no começo da primeira mensagem do
+ * usuário e o formato JSON é pedido por texto.
+ */
+function adaptForGemma(payload: GeminiPayload): GeminiPayload {
+  const preamble = `${systemText(payload)}${jsonInstruction(payload)}`.trim();
+  const contents = (payload.contents ?? []).map((c) => ({ ...c, parts: c.parts.map((p) => ({ ...p })) }));
+  if (preamble) {
+    const first = contents.find((c) => c.role === "user");
+    if (first && first.parts[0]) {
+      first.parts[0].text = `${preamble}\n\n---\n\nMensagem do usuário:\n${first.parts[0].text ?? ""}`;
+    } else {
+      contents.unshift({ role: "user", parts: [{ text: preamble }] });
+    }
+  }
+  const generationConfig: Record<string, unknown> = {};
+  const max = payload.generationConfig?.maxOutputTokens;
+  if (max) generationConfig.maxOutputTokens = max;
+  return { contents, generationConfig };
+}
+
+async function post(url: string, init: RequestInit, timeoutMs: number): Promise<AttemptResult> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      },
-    );
+    const response = await fetch(url, { ...init, signal: controller.signal });
     return { kind: "http", status: response.status, body: await response.text() };
   } catch {
     return { kind: controller.signal.aborted ? "timeout" : "network" };
@@ -82,52 +142,120 @@ async function attempt(
   }
 }
 
-function extractText(body: string): string | undefined {
+function callGoogle(apiKey: string, model: string, payload: GeminiPayload, timeoutMs: number) {
+  return post(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) },
+    timeoutMs,
+  );
+}
+
+function callGroq(model: string, payload: GeminiPayload, timeoutMs: number) {
+  const wantsJson = payload.generationConfig?.responseMimeType === "application/json";
+  const messages = [
+    { role: "system", content: `${systemText(payload)}${jsonInstruction(payload)}`.trim() },
+    ...(payload.contents ?? []).map((c) => ({
+      role: c.role === "model" ? "assistant" : "user",
+      content: c.parts.map((p) => p.text ?? "").join("\n"),
+    })),
+  ];
+  return post(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.GROQ_API_KEY}` },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_completion_tokens: payload.generationConfig?.maxOutputTokens ?? 3000,
+        ...(wantsJson ? { response_format: { type: "json_object" } } : {}),
+      }),
+    },
+    timeoutMs,
+  );
+}
+
+function extractText(provider: Target["provider"], body: string): string | undefined {
   try {
     const data = JSON.parse(body);
+    if (provider === "groq") {
+      const text = data.choices?.[0]?.message?.content;
+      return typeof text === "string" && text.trim() ? text : undefined;
+    }
     const parts: { text?: string; thought?: boolean }[] = data.candidates?.[0]?.content?.parts ?? [];
     const text = parts
       .filter((p) => !p.thought && typeof p.text === "string")
       .map((p) => p.text)
       .join("");
-    return text || undefined;
+    return text.trim() ? text : undefined;
   } catch {
     return undefined;
   }
 }
 
+/**
+ * Tira o JSON de dentro de uma resposta em texto (cercas ```json, frase
+ * antes/depois). Modelos com saída estruturada já devolvem JSON puro.
+ */
+export function parseJsonText(text: string): unknown {
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const unfenced = trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    const start = unfenced.indexOf("{");
+    const end = unfenced.lastIndexOf("}");
+    if (start === -1 || end <= start) throw new Error("Sem JSON na resposta.");
+    return JSON.parse(unfenced.slice(start, end + 1));
+  }
+}
+
+function shortName(model: string) {
+  return model.replace(/^gemini-/, "").replace(/^openai\//, "");
+}
+
 export async function callGemini(apiKey: string, payload: unknown): Promise<GeminiResult> {
+  const base = payload as GeminiPayload;
   let lastStatus: number | "timeout" | "network" = 503;
   let quotaExhausted = false;
   const startedAt = Date.now();
   // Resumo do que cada modelo respondeu, mostrado em letra pequena no app
-  // quando tudo falha (ex: "3.6-flash 503 503 503 · 3.8-flash 429").
+  // quando tudo falha (ex: "3.6-flash 503 503 · gemma-4-31b-it 429").
   const outcomes = new Map<string, string[]>();
   const note = (model: string, outcome: string) =>
     outcomes.set(model, [...(outcomes.get(model) ?? []), outcome]);
   const fail = () => {
-    const detail = [...outcomes].map(([m, o]) => `${m.replace(/^gemini-/, "")} ${o.join(" ")}`).join(" · ");
+    const detail = [...outcomes].map(([m, o]) => `${shortName(m)} ${o.join(" ")}`).join(" · ");
     console.warn(`[gemini] falhou em todos os modelos: ${detail}`);
     return { ok: false as const, detail, ...friendlyError(lastStatus, quotaExhausted) };
   };
 
-  for (const model of modelChain()) {
-    let modelPayload = payload;
+  for (const target of targets()) {
+    const { provider, model } = target;
+    let modelPayload: GeminiPayload = provider === "google" && isGemma(model) ? adaptForGemma(base) : base;
+
     for (let i = 0; i <= RETRY_DELAYS_MS.length; i++) {
       if (i > 0) await sleep(RETRY_DELAYS_MS[i - 1]);
-      if (Date.now() - startedAt > TOTAL_DEADLINE_MS) return fail();
+      const elapsed = Date.now() - startedAt;
+      if (elapsed > TOTAL_DEADLINE_MS) return fail();
+      const timeoutMs = Math.min(target.timeoutMs, HARD_LIMIT_MS - elapsed);
 
-      const result = await attempt(apiKey, model, modelPayload);
+      const result =
+        provider === "groq"
+          ? await callGroq(model, modelPayload, timeoutMs)
+          : await callGoogle(apiKey, model, modelPayload, timeoutMs);
 
       if (result.kind !== "http") {
         console.warn(`[gemini] ${model} tentativa ${i + 1}: ${result.kind}`);
         note(model, result.kind === "timeout" ? "tempo" : "rede");
         lastStatus = result.kind;
+        // Tempo esgotado num modelo lento: melhor ir para o próximo do que repetir.
+        if (result.kind === "timeout") break;
         continue;
       }
 
       if (result.status >= 200 && result.status < 300) {
-        const text = extractText(result.body);
+        const text = extractText(provider, result.body);
         if (text) {
           if (outcomes.size > 0) console.info(`[gemini] respondeu com ${model} após falhas`);
           return { ok: true, text, model };
@@ -142,7 +270,7 @@ export async function callGemini(apiKey: string, payload: unknown): Promise<Gemi
       console.warn(`[gemini] ${model} tentativa ${i + 1}: HTTP ${result.status}`, result.body.slice(0, 500));
       lastStatus = result.status;
       note(model, String(result.status));
-      if (result.status === 429 && /quota|RESOURCE_EXHAUSTED/i.test(result.body)) quotaExhausted = true;
+      if (result.status === 429 && /quota|RESOURCE_EXHAUSTED|rate limit/i.test(result.body)) quotaExhausted = true;
 
       if (result.status === 400 && /thinking/i.test(result.body)) {
         // Modelo não aceita o thinkingConfig enviado: repete na hora sem ele.
@@ -169,11 +297,10 @@ function friendlyError(
   status: number | "timeout" | "network",
   quotaExhausted: boolean,
 ): { status: number; message: string } {
-  if (quotaExhausted) {
+  if (status === 429 && quotaExhausted) {
     return {
       status: 429,
-      message:
-        "A cota de uso do Gemini acabou por agora. Ela é renovada pelo Google; ativar o faturamento na chave da API evita esse limite.",
+      message: "A cota gratuita de IA de hoje acabou em todos os modelos. Ela é renovada pelo Google; tente mais tarde.",
     };
   }
   if (status === "timeout") {

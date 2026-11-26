@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { callGemini } from "./_gemini.js";
+import { callGemini, parseJsonText } from "./_gemini.js";
 
 interface ConversationTurn {
   role: "user" | "model";
@@ -66,6 +66,45 @@ Regras:
   return `${base}\n\nBiblioteca pessoal de pratos do usuário:\n${library}`;
 }
 
+const MACROS = ["kcal", "protein", "carbs", "fat"] as const;
+
+function toNumber(value: unknown): number {
+  const n = typeof value === "string" ? Number(value.replace(",", ".").replace(/[^\d.-]/g, "")) : Number(value);
+  return Number.isFinite(n) ? Math.round(n * 10) / 10 : 0;
+}
+
+/**
+ * Modelos reserva (Gemma, Groq) seguem o formato pelo texto, não por esquema
+ * nativo: aqui garantimos o mesmo formato que o app espera de qualquer modelo.
+ */
+export function normalizeMealResponse(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const rawItems = Array.isArray(r.items) ? r.items : [];
+  const items = rawItems
+    .filter((it): it is Record<string, unknown> => !!it && typeof it === "object")
+    .map((it) => ({
+      name: String(it.name ?? "").trim(),
+      quantity: String(it.quantity ?? "").trim(),
+      ...Object.fromEntries(MACROS.map((k) => [k, toNumber(it[k])])),
+    }))
+    .filter((it) => it.name);
+
+  const status = r.status === "need_info" || r.status === "complete" ? r.status : items.length ? "complete" : null;
+  if (status === "need_info") {
+    const question = typeof r.question === "string" ? r.question.trim() : "";
+    return question ? { status, question } : null;
+  }
+  if (status !== "complete" || items.length === 0) return null;
+
+  // Total sempre recalculado pelos itens: evita conta errada do modelo.
+  const totals = Object.fromEntries(
+    MACROS.map((k) => [k, Math.round(items.reduce((acc, it) => acc + (it as unknown as Record<string, number>)[k], 0) * 10) / 10]),
+  );
+  const dishName = typeof r.dishName === "string" && r.dishName.trim() ? r.dishName.trim() : undefined;
+  return { status, ...(dishName ? { dishName } : {}), items, totals };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Método não permitido." });
@@ -103,11 +142,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  let normalized: Record<string, unknown> | null = null;
   try {
-    const parsed = JSON.parse(result.text);
-    res.status(200).json(parsed);
+    normalized = normalizeMealResponse(parseJsonText(result.text));
   } catch {
-    console.warn("[parse-meal] JSON inválido do modelo", result.model, result.text.slice(0, 500));
-    res.status(502).json({ error: "A IA respondeu de um jeito inesperado. Tente novamente.", retryable: true });
+    normalized = null;
   }
+  if (!normalized) {
+    console.warn("[parse-meal] resposta fora do formato", result.model, result.text.slice(0, 500));
+    res.status(502).json({
+      error: "A IA respondeu de um jeito inesperado. Tente novamente.",
+      detail: `${result.model}: formato inválido`,
+      retryable: true,
+    });
+    return;
+  }
+  if (result.model !== (process.env.GEMINI_MODEL || "gemini-3.6-flash")) {
+    console.info(`[parse-meal] respondido pelo modelo reserva ${result.model}`);
+  }
+  res.status(200).json(normalized);
 }
